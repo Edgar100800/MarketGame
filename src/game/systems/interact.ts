@@ -1,7 +1,7 @@
 import { BUY_INTERVAL, BUY_STEPS, MONEY_FIB_CAP, MONEY_INTERVAL, MONEY_INTERVAL_DECAY, MONEY_MIN_INTERVAL, TRANSFER_INTERVAL } from '../config'
 import type { ItemKind, Vec2, Vec3 } from '../types'
 import { pushItem, removeItem, stackHas, stackKinds, stackRoom } from '../stack'
-import { applyUnlock, groundY, inRect, shelfSlotPos, stationPoint, trashZone, unlockDef, type World } from '../world'
+import { activeTrash, applyUnlock, groundY, inRect, shelfSlotPos, stationPoint, trashZone, unlockDef, type World } from '../world'
 
 const at = (p: Vec2, y = 1): Vec3 => [p.x, y, p.z]
 
@@ -76,7 +76,7 @@ function transferOnce(w: World): boolean {
     }
   }
   if (p.stack.length) {
-    const bin = w.level.trash.find((t) => inRect(p.pos, trashZone(t)))
+    const bin = activeTrash(w).find((t) => inRect(p.pos, trashZone(t)))
     if (bin) {
       take(w, [bin.pos.x, 0.9, bin.pos.z])
       w.events.push({ type: 'trash', pos: bin.pos })

@@ -1,6 +1,6 @@
 import { EMPTY_SHELF_PRIORITY, WORKER_STUCK_TIME, WORKER_TRANSFER } from '../config'
 import type { ItemKind, Machine, Producer, Rect, Route, Shelf, Station, TrashDef, Vec2, Worker } from '../types'
-import { approach, dist, groundY, shelfSlotPos, trashZone, walkPath, type World } from '../world'
+import { activeTrash, approach, dist, groundY, shelfSlotPos, trashZone, walkPath, type World } from '../world'
 
 // Employees: each role has a set of possible routes (source -> destination).
 // An idle worker picks the best route: serving waiting customers first, then covering
@@ -142,9 +142,10 @@ function goTo(w: World, wk: Worker, target: Rect) {
 
 /** Closest trash bin to `p` (bins are few, no need to be fancy). */
 function nearestTrash(w: World, p: Vec2): TrashDef {
-  let best = w.level.trash[0]
+  const bins = activeTrash(w)
+  let best = bins[0]
   let bestD = Infinity
-  for (const t of w.level.trash) {
+  for (const t of bins) {
     const d = dist(t.pos, p)
     if (d < bestD) {
       bestD = d

@@ -214,6 +214,11 @@ export function stationDirection(s: Station, x: number, z: number): Vec2 {
   return rotateOffset({ x, z }, s.turn)
 }
 
+/** Trash bins currently in play: bins tied to an area only exist once it is unlocked. */
+export function activeTrash(w: World): TrashDef[] {
+  return w.level.trash.filter((t) => !t.area || w.areas.has(t.area))
+}
+
 /** Zone in front of a trash bin. */
 export function trashZone(t: TrashDef): Rect {
   return { x: t.pos.x, z: t.pos.z + 0.45, w: 1.7, d: 2.0 }
@@ -234,7 +239,7 @@ export function unlockDef(w: World, id: string): UnlockDef {
 export function colliders(w: World): Rect[] {
   const out: Rect[] = []
   for (const s of w.stations) if (s.collider) out.push(s.collider)
-  for (const t of w.level.trash) out.push({ x: t.pos.x, z: t.pos.z, w: 0.8, d: 0.7 })
+  for (const t of activeTrash(w)) out.push({ x: t.pos.x, z: t.pos.z, w: 0.8, d: 0.7 })
   // back wall over every unlocked area
   for (const a of w.level.areas) {
     const r = a.rect

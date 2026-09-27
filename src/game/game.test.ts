@@ -254,7 +254,9 @@ describe('autopilot', () => {
     }
     // cashier is optional and can jump ahead when money comes in fast: check the chain only
     const chain = w.unlocked.filter((id) => id !== 'cashier')
-    expect(chain.slice(0, 3)).toEqual(['planter2', 'eggs', 'canner'])
+    // after the hens the bot buys whichever of the revealed zones it can pay first
+    expect(chain.slice(0, 2)).toEqual(['planter2', 'eggs'])
+    expect(['canner', 'hen2', 'strawberry']).toContain(chain[2])
   })
 })
 
@@ -550,8 +552,8 @@ describe('editor areas', () => {
     const area = restored.areas.find((candidate) => candidate.id === 'A1')!
     expect(area.rect.x).toBe(21.5)
     expect(area.rect.z).toBe(-0.5)
-    expect(area.rect.w).toBe(10.5)
-    expect(area.rect.d).toBe(12)
+    expect(area.rect.w).toBe(14.5)
+    expect(area.rect.d).toBe(16)
   })
 
   test('trash bins move and persist through the layout roundtrip', () => {
@@ -805,7 +807,7 @@ describe('cashier hire spot', () => {
   test('all staff hire zones line up inside the office floor', () => {
     const inOffice = (id: string) => {
       const z = LEVEL1.unlocks.find((u) => u.id === id)!.zone
-      return z.x >= -15.3 && z.x <= -11.7 && z.z >= -7.5 && z.z <= 0.5
+      return z.x >= -18.7 && z.x <= -12.3 && z.z >= -10.2 && z.z <= -1.8
     }
     for (const id of ['farmer', 'shelver', 'chef', 'farmer2', 'shelver2', 'chef2']) expect(inOffice(id)).toBe(true)
   })
@@ -819,16 +821,20 @@ describe('cashier hire spot', () => {
   test('the office is enclosed with walls and the door opens to the store', () => {
     const w = createWorld(LEVEL1, { seed: 1 })
     const walls = colliders(w)
-    expect(walls.some((r) => r.x === -15.5 && r.z === -3.5 && r.w === 0.5)).toBe(true) // west wall
-    expect(walls.some((r) => r.x === -13.25 && r.z === 0.5)).toBe(true) // south wall
-    expect(walls.some((r) => r.x === -11 && Math.abs(r.z + 6) < 0.01)).toBe(true) // east wall, back segment
-    expect(walls.some((r) => r.x === -11 && Math.abs(r.z + 1) < 0.01)).toBe(true) // east wall, front segment
+    expect(walls.some((r) => r.x === -19 && r.z === -6 && r.w === 0.5)).toBe(true) // west wall
+    expect(walls.some((r) => r.x === -15.5 && r.z === -1.5)).toBe(true) // south wall
+    expect(walls.some((r) => r.x === -12 && Math.abs(r.z + 9) < 0.01)).toBe(true) // east wall, back segment
+    expect(walls.some((r) => r.x === -12 && Math.abs(r.z + 3.5) < 0.01)).toBe(true) // east wall, front segment
     // the doorway itself stays free
-    expect(walls.some((r) => Math.abs(r.x + 11) < 0.26 && Math.abs(r.z + 3.5) < 1)).toBe(false)
-    // and there is a real path from the store floor to a hire spot through it
-    const path = w.grid.findPath({ x: -8, z: 1 }, { x: -12.6, z: -0.8 })
+    expect(walls.some((r) => Math.abs(r.x + 12) < 0.26 && Math.abs(r.z + 6.5) < 1)).toBe(false)
+    // and there is a real path from the store floor to a hire spot through it (door opens on the service aisle)
+    const path = w.grid.findPath({ x: -8.5, z: 1 }, { x: -14, z: -3 })
     expect(path.length).toBeGreaterThan(1)
-    expect(path.some((p) => Math.abs(p.x + 11) <= 1.2 && Math.abs(p.z + 3.5) <= 0.8)).toBe(true)
+    // the path is string-pulled: check where the leg that crosses the east wall (x = -12) passes
+    const crossing = path.slice(1).map((p, i) => [path[i], p]).find(([a, b]) => (a.x + 12) * (b.x + 12) <= 0)!
+    const [a, b] = crossing
+    const zAtWall = a.z + ((b.z - a.z) * (-12 - a.x)) / (b.x - a.x || 1)
+    expect(Math.abs(zAtWall + 6.5)).toBeLessThanOrEqual(0.8)
   })
 
   test('opening the cafeteria annex reveals the second staff hires', () => {
@@ -972,5 +978,53 @@ describe('expand or hire', () => {
     expect(w.workers.some((x) => x.role === 'shelver')).toBe(true)
     applyUnlock(w, 'areaA1', false)
     expect(w.visibleZones).toContain('wheat')
+  })
+})
+
+describe('layout v2 sanity', () => {
+  type Box = { x: number; z: number; w: number; d: number }
+  const overlap = (a: Box, b: Box) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 0.01 && Math.abs(a.z - b.z) < (a.d + b.d) / 2 - 0.01
+  const inside = (p: Vec2, r: Box) => Math.abs(p.x - r.x) <= r.w / 2 && Math.abs(p.z - r.z) <= r.d / 2
+  const defs = [...LEVEL1.start.map((def) => ({ def, unlock: null as string | null })), ...LEVEL1.unlocks.flatMap((u) => u.spawns.map((def) => ({ def, unlock: u.id as string | null })))]
+
+  // unlock ids that must be bought before (or together with) each unlock
+  const parents = new Map<string, string>()
+  for (const u of LEVEL1.unlocks) for (const r of u.reveals) parents.set(r, u.id)
+  const ancestors = (id: string | null) => {
+    const out = new Set<string>()
+    for (let cur = id; cur; cur = parents.get(cur) ?? null) out.add(cur)
+    return out
+  }
+  const openAreas = (bought: Set<string>) => new Set([...LEVEL1.startAreas, ...LEVEL1.unlocks.filter((u) => u.area && bought.has(u.id)).map((u) => u.area!)])
+
+  test('no two station pads overlap', () => {
+    const pads = defs.map(({ def }) => ({ id: def.id, pad: buildStation(def, 0).pad as Box }))
+    for (let i = 0; i < pads.length; i++)
+      for (let j = i + 1; j < pads.length; j++) expect(`${pads[i].id}/${pads[j].id}:${overlap(pads[i].pad, pads[j].pad)}`).toBe(`${pads[i].id}/${pads[j].id}:false`)
+  })
+
+  test('trash zones never overlap a station pad and stay inside the map', () => {
+    for (const bin of LEVEL1.trash) {
+      const zone = trashZone(bin)
+      expect(inside(bin.pos, LEVEL1.bounds)).toBe(true)
+      for (const { def } of defs) expect(`${bin.id}/${def.id}:${overlap(zone, buildStation(def, 0).pad as Box)}`).toBe(`${bin.id}/${def.id}:false`)
+    }
+  })
+
+  test('stations and buy zones never land in an area that is still locked', () => {
+    for (const { def, unlock } of defs) {
+      const open = openAreas(ancestors(unlock))
+      for (const area of LEVEL1.areas) if (inside(def.pos, area.rect)) expect(`${def.id} in ${area.id}:${open.has(area.id)}`).toBe(`${def.id} in ${area.id}:true`)
+    }
+    for (const u of LEVEL1.unlocks) {
+      // the zone is visible once the parent is bought, before this unlock itself
+      const open = openAreas(ancestors(parents.get(u.id) ?? null))
+      for (const area of LEVEL1.areas) if (inside(u.zone, area.rect)) expect(`${u.id} zone in ${area.id}:${open.has(area.id)}`).toBe(`${u.id} zone in ${area.id}:true`)
+    }
+  })
+
+  test('everything fits inside the level bounds', () => {
+    for (const { def } of defs) expect(`${def.id}:${inside(def.pos, LEVEL1.bounds)}`).toBe(`${def.id}:true`)
+    for (const u of LEVEL1.unlocks) expect(`${u.id}:${inside(u.zone, LEVEL1.bounds)}`).toBe(`${u.id}:true`)
   })
 })

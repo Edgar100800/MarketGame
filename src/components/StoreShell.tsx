@@ -9,7 +9,7 @@ import { Bush, Fence } from '../models/Farm'
 import { DecoView } from './DecoView'
 import { Pill, PriceTag } from '../models/Labels'
 import { onGameEvent, useGame, world } from '../game/state'
-import { trashZone, unlockDef } from '../game/world'
+import { activeTrash, trashZone, unlockDef } from '../game/world'
 import type { AreaDef } from '../game/types'
 import { PopIn } from './PopIn'
 import { floorY } from './StationView'
@@ -206,9 +206,10 @@ function FunctionalTrashBin({ x, z }: { x: number; z: number }) {
 
 /** Functional trash bins (throw away what you carry). */
 function TrashBins() {
+  useGame((s) => s.version)
   return (
     <>
-      {world.level.trash.map((t) => (
+      {activeTrash(world).map((t) => (
         <group key={t.id}>
           <FunctionalTrashBin x={t.pos.x} z={t.pos.z} />
           <ZonePad rect={trashZone(t)} />
@@ -234,11 +235,12 @@ export function StoreShell() {
       <Walls />
       <TrashBins />
       {/* farm decoration */}
-      <Fence length={4} position={[-13.5, 0, 11]} rotation={[0, Math.PI / 2, 0]} />
-      <Fence length={4} position={[-11.5, 0, 13.3]} />
-      <Bush position={[-16.5, 0, -4.5]} />
+      {/* L-shaped fence around the hen yard's back corner */}
+      <Fence length={4} position={[-14.5, 0, 14.3]} rotation={[0, Math.PI / 2, 0]} />
+      <Fence length={4} position={[-12.5, 0, 16.3]} />
+      <Bush position={[-20.5, 0, -4.5]} />
       <Bush position={[15, 0, 7]} scale={0.8} />
-      <Bush position={[9.5, 0, 13]} scale={0.9} />
+      <Bush position={[13.5, 0, 16]} scale={0.9} />
       {/* movable decorations from the level (editor can rearrange them) */}
       {(world.level.deco ?? []).map((piece) => (
         <DecoView key={piece.id} def={piece} />

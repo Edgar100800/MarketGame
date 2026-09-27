@@ -1,9 +1,19 @@
 import { create } from 'zustand'
 import { LEVEL1 } from './level1'
+import { LEVEL1_V1 } from './level1.v1'
 import { snap } from './spatial'
 import type { AreaDef, DecoDef, ItemKind, LevelDef, QuarterTurn, StationDef, TrashDef, Vec2 } from './types'
 
-const EDITOR_KEY = 'minimart.editor.level.v1'
+// ?layout=v1 plays the original layout; each layout keeps its own editor edits
+const LEGACY_LAYOUT = (() => {
+  try {
+    return new URLSearchParams(location.search).get('layout') === 'v1'
+  } catch {
+    return false
+  }
+})()
+const BASE_LEVEL = LEGACY_LAYOUT ? LEVEL1_V1 : LEVEL1
+const EDITOR_KEY = LEGACY_LAYOUT ? 'minimart.editor.level.v1' : 'minimart.editor.level.v2'
 
 // purchase-wave palette, cycles for deeper waves
 export const TIER_COLORS = ['#4caf50', '#f4c430', '#ff8a3d', '#e53935', '#ab47bc', '#2f9de0']
@@ -67,9 +77,9 @@ export function applyLayout(base: LevelDef, layout: LayoutFile): LevelDef {
 function loadLevel() {
   try {
     const raw = localStorage.getItem(EDITOR_KEY)
-    return raw ? applyLayout(LEVEL1, JSON.parse(raw) as LayoutFile) : cloneLevel(LEVEL1)
+    return raw ? applyLayout(BASE_LEVEL, JSON.parse(raw) as LayoutFile) : cloneLevel(BASE_LEVEL)
   } catch {
-    return cloneLevel(LEVEL1)
+    return cloneLevel(BASE_LEVEL)
   }
 }
 
@@ -193,7 +203,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
   reset: () => {
     const previous = get().level
-    const level = cloneLevel(LEVEL1)
+    const level = cloneLevel(BASE_LEVEL)
     persist(level)
     set((state) => ({ level, history: [...state.history.slice(-29), previous], selected: null }))
   },

@@ -30,6 +30,8 @@ export interface DecoDef {
 export interface TrashDef {
   id: string
   pos: Vec2
+  /** Area that must be unlocked before the bin appears (always there when omitted). */
+  area?: string
 }
 
 export interface Recipe {

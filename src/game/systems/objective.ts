@@ -1,7 +1,7 @@
 import { NAME } from '../config'
 import { stackHas, stackKinds, stackRoom } from '../stack'
 import type { Checkout, ItemKind, Machine, Objective, Producer, Shelf } from '../types'
-import { approach, inRect, trashZone, unlockDef, type World } from '../world'
+import { activeTrash, approach, inRect, trashZone, unlockDef, type World } from '../world'
 import { hasIngredients } from './production'
 
 /** Tutorial hint: what the player should do next, and where the arrow points. */
@@ -24,7 +24,7 @@ export function objective(w: World): Objective {
 
   // stay on the current zone while items can still move (don't leave a job half done)
   const room = stackRoom(p) > 0
-  const inBin = w.level.trash.map(trashZone).find((z) => inRect(p.pos, z))
+  const inBin = activeTrash(w).map(trashZone).find((z) => inRect(p.pos, z))
   if (inBin && p.stack.length) return { text: 'Tira lo que llevas', target: at(inBin) }
   for (const s of w.stations) {
     if (s.type === 'producer' && s.feed && inRect(p.pos, s.zone) && stackHas(p, s.feed.kind) && s.feed.stock < s.feed.cap)
@@ -57,7 +57,7 @@ export function objective(w: World): Objective {
       if (d) return d
     }
     // nowhere to put anything: throw it away so the hands are free again
-    const bin = w.level.trash.map(trashZone).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z))[0]
+    const bin = activeTrash(w).map(trashZone).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z))[0]
     return { text: 'Estante lleno: tira el resto al tacho', target: at(bin) }
   }
 
