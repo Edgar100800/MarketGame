@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#b9ef62"/>
+  <circle cx="1030" cy="-30" r="260" fill="#ffd23f"/>
+  <circle cx="1050" cy="580" r="230" fill="#ff8a3d"/>
+  <path d="M0 490h1200v140H0z" fill="#f4f0dc"/>
+  <path d="M0 490h1200" stroke="#1e1914" stroke-width="8"/>
+  <g transform="translate(720 96)">
+    <path d="M12 48h42l25 248h238l43-175H60" fill="#34e0ff" stroke="#1e1914" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M104 160h218M112 220h196" stroke="#1e1914" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="130" cy="342" r="24" fill="#1e1914"/>
+    <circle cx="295" cy="342" r="24" fill="#1e1914"/>
+    <path d="M8 18h49" stroke="#1e1914" stroke-width="10" stroke-linecap="round"/>
+    <path d="M175 45v-28h95v28" fill="#ff8a3d" stroke="#1e1914" stroke-width="10"/>
+    <circle cx="205" cy="98" r="22" fill="#ffcc9b" stroke="#1e1914" stroke-width="8"/>
+    <path d="M181 91q24-38 48 0" fill="#6a4228" stroke="#1e1914" stroke-width="8"/>
+    <path d="M177 135q26-28 56 0v74h-56z" fill="#ffd23f" stroke="#1e1914" stroke-width="8"/>
+  </g>
+  <g fill="#1e1914">
+    <text x="82" y="170" font-family="DejaVu Sans, sans-serif" font-size="30" font-weight="700" letter-spacing="7">MINI MART</text>
+    <text x="78" y="270" font-family="DejaVu Sans, sans-serif" font-size="104" font-weight="900">LAB</text>
+  </g>
+  <path d="M84 312h390" stroke="#1e1914" stroke-width="9" stroke-linecap="round"/>
+  <text x="84" y="378" fill="#1e1914" font-family="DejaVu Sans, sans-serif" font-size="31" font-weight="700">Construye. Abastece. Crece.</text>
+  <g transform="translate(80 540)">
+    <rect width="270" height="54" rx="27" fill="#1e1914"/>
+    <text x="135" y="36" text-anchor="middle" fill="#fff" font-family="DejaVu Sans, sans-serif" font-size="22" font-weight="700">JUGAR GRATIS</text>
+  </g>
+</svg>
