@@ -11,6 +11,7 @@ import type { WorkerRole } from '../game/types'
 import { PopIn } from './PopIn'
 import { useGame, world } from '../game/state'
 import { floorY } from './StationView'
+import { CHARACTER_SCALE } from '../game/sizes'
 
 /** Turns smoothly towards `target` angle. */
 function turn(g: Group, target: number, dt: number) {
@@ -60,10 +61,10 @@ export function PlayerView() {
       <group ref={body}>
         <group ref={bounce}>
           {/* mixed stack: tomatoes, eggs... in pickup order, animated on load / unload */}
-          <Character color={C.player} walking={p.moving} carry={p.stack.length > 0 && <CarryStack items={p.stack} moving={p.moving} />} />
+          <Character scale={CHARACTER_SCALE} color={C.player} walking={p.moving} carry={p.stack.length > 0 && <CarryStack items={p.stack} moving={p.moving} />} />
         </group>
       </group>
-      {p.stack.length >= p.cap && <Pill text="MAX" position={[0, 2.3, 0]} />}
+      {p.stack.length >= p.cap && <Pill text="MAX" position={[0, 2.3 * CHARACTER_SCALE, 0]} />}
     </group>
   )
 }
@@ -89,6 +90,7 @@ function CustomerView({ id }: { id: number }) {
     <group ref={root} position={[c.pos.x, 0, c.pos.z]}>
       <group ref={body}>
         <Character
+          scale={CHARACTER_SCALE}
           color={CUSTOMER_COLORS[c.color]}
           hat={c.hat}
           hatColor={c.hatColor}
@@ -98,8 +100,8 @@ function CustomerView({ id }: { id: number }) {
         />
       </group>
       {/* the bubble only shows the want they are chasing right now: icon + count + one dot per list item */}
-      {shopping && line && <Bubble icon={ICON[line.kind]} text={`${line.collected}/${line.requested}`} dots={{ done: c.lineIndex, total: c.shopping.length }} position={[0, 2.2, 0]} />}
-      {queued && <Bubble text="Caja" position={[0, 2.2, 0]} />}
+      {shopping && line && <Bubble icon={ICON[line.kind]} text={`${line.collected}/${line.requested}`} dots={{ done: c.lineIndex, total: c.shopping.length }} position={[0, 2.2 * CHARACTER_SCALE, 0]} />}
+      {queued && <Bubble text="Caja" position={[0, 2.2 * CHARACTER_SCALE, 0]} />}
     </group>
   )
 }
@@ -146,11 +148,11 @@ function WorkerView({ id }: { id: string }) {
       <PopIn bornAt={wk.bornAt}>
         <group ref={body}>
           <WorkerBody bounceKey={wk.count}>
-            <Character color={WORKER_COLOR} hat={look.hat} hatColor={look.hatColor} vest={look.vest} top={look.top} buttons={look.buttons} walking={wk.moving} carry={items.length > 0 && <CarryStack items={items} moving={wk.moving} />} />
+            <Character scale={CHARACTER_SCALE} color={WORKER_COLOR} hat={look.hat} hatColor={look.hatColor} vest={look.vest} top={look.top} buttons={look.buttons} walking={wk.moving} carry={items.length > 0 && <CarryStack items={items} moving={wk.moving} />} />
           </WorkerBody>
         </group>
       </PopIn>
-      <Pill text={wk.paused ? `⏸ ${ROLE_NAME[wk.role]}` : ROLE_NAME[wk.role]} position={[0, 2.3, 0]} />
+      <Pill text={wk.paused ? `⏸ ${ROLE_NAME[wk.role]}` : ROLE_NAME[wk.role]} position={[0, 2.3 * CHARACTER_SCALE, 0]} />
     </group>
   )
 }

@@ -2,7 +2,7 @@ import { PLAYER_CAP, WORKER_CAP, WORKER_SPEED } from './config'
 import { applyUpgrades } from './upgrades'
 import { Grid } from './nav'
 import { SHELF_WIDTH, slotsFor } from './layout'
-import { COLLIDERS, PADS } from './sizes'
+import { COLLIDERS, PADS, STATION_SCALE as S } from './sizes'
 import type { Customer, DoorDef, GameEvent, LevelDef, Player, ProducerModel, Rect, Shelf, Station, StationDef, TrashDef, UnlockDef, Vec2, Vec3, Worker } from './types'
 import { localPoint, localRect, rotateOffset } from './spatial'
 
@@ -72,8 +72,9 @@ function defaultPlants(model: ProducerModel) {
 /** Builds the runtime station (with zones and collider) from its level definition. */
 export function buildStation(def: StationDef, time: number): Station {
   const turn = def.turn ?? 0
-  const rect = (offsetX: number, offsetZ: number, w: number, d: number) => localRect(def.pos, { x: offsetX, z: offsetZ, w, d }, turn)
-  const point = (offsetX: number, offsetZ: number) => localPoint(def.pos, { x: offsetX, z: offsetZ }, turn)
+  // offsets and sizes are authored at scale 1; STATION_SCALE shrinks the whole station around its center
+  const rect = (offsetX: number, offsetZ: number, w: number, d: number) => localRect(def.pos, { x: offsetX * S, z: offsetZ * S, w: w * S, d: d * S }, turn)
+  const point = (offsetX: number, offsetZ: number) => localPoint(def.pos, { x: offsetX * S, z: offsetZ * S }, turn)
   switch (def.type) {
     case 'producer': {
       const plants = def.units ? 1 : defaultPlants(def.model)
@@ -208,12 +209,13 @@ export function groundY(w: World, x: number, z: number) {
 export function shelfSlotPos(w: World, s: Shelf, i: number): Vec3 {
   const slots = slotsFor(s.model, s.kind, s.cap, s.tiers)
   const [x, y, z] = slots[Math.max(0, Math.min(i, slots.length - 1))]
-  const p = localPoint(s.pos, { x, z }, s.turn)
-  return [p.x, groundY(w, s.pos.x, s.pos.z) + y, p.z]
+  const p = localPoint(s.pos, { x: x * S, z: z * S }, s.turn)
+  return [p.x, groundY(w, s.pos.x, s.pos.z) + y * S, p.z]
 }
 
+/** Point on the station model, `x`/`z` authored at scale 1 (scaled like the model). */
 export function stationPoint(s: Station, x: number, z: number): Vec2 {
-  return localPoint(s.pos, { x, z }, s.turn)
+  return localPoint(s.pos, { x: x * S, z: z * S }, s.turn)
 }
 
 export function stationDirection(s: Station, x: number, z: number): Vec2 {
@@ -237,7 +239,7 @@ export function activeTrash(w: World): TrashDef[] {
 
 /** Zone in front of a trash bin. */
 export function trashZone(t: TrashDef): Rect {
-  return { x: t.pos.x, z: t.pos.z + 0.45, w: PADS.bin.w, d: PADS.bin.d }
+  return { x: t.pos.x, z: t.pos.z + 0.45 * S, w: PADS.bin.w * S, d: PADS.bin.d * S }
 }
 
 /** Point just inside the front edge of a pad: where someone walks to use it. */
@@ -255,7 +257,7 @@ export function unlockDef(w: World, id: string): UnlockDef {
 export function colliders(w: World): Rect[] {
   const out: Rect[] = []
   for (const s of w.stations) if (s.collider) out.push(s.collider)
-  for (const t of activeTrash(w)) out.push({ x: t.pos.x, z: t.pos.z, w: COLLIDERS.bin.w, d: COLLIDERS.bin.d })
+  for (const t of activeTrash(w)) out.push({ x: t.pos.x, z: t.pos.z, w: COLLIDERS.bin.w * S, d: COLLIDERS.bin.d * S })
   // back wall over every unlocked area
   for (const a of w.level.areas) {
     const r = a.rect

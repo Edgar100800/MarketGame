@@ -7,12 +7,13 @@ import { Character } from '../models/Character'
 import { Pill } from '../models/Labels'
 import { ICON } from '../game/config'
 import { useGame, world } from '../game/state'
-import { groundY } from '../game/world'
+import { groundY, stationPoint } from '../game/world'
 import type { Checkout, ItemKind, Machine, Producer, QuarterTurn, Shelf, Station } from '../game/types'
 import { PopIn } from './PopIn'
 import { ZonePad } from './ZonePad'
 import { SHELF_WIDTH } from '../game/layout'
-import { localPoint, turnRadians } from '../game/spatial'
+import { turnRadians } from '../game/spatial'
+import { CHARACTER_SCALE, STATION_SCALE } from '../game/sizes'
 
 /** Height of the floor at a point: store areas are a raised slab. */
 export function floorY(x: number, z: number) {
@@ -28,7 +29,7 @@ function ProducerView({ s }: { s: Producer }) {
   const y = floorY(s.pos.x, s.pos.z)
   return (
     <>
-      <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]}>
+      <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]} scale={STATION_SCALE}>
         <PopIn bornAt={s.bornAt}>
           {s.model === 'planter' && <Planter stock={s.stock} plants={s.plants} />}
           {s.model === 'nest' && <Nest eggs={s.stock} feed={s.feed?.stock} />}
@@ -40,10 +41,10 @@ function ProducerView({ s }: { s: Producer }) {
         </PopIn>
       </group>
       <ZonePad rect={s.pad} />
-      <Pill icon={ICON[s.kind]} text={s.stock >= s.max ? 'MAX' : `${s.stock}/${s.max}`} position={[s.pos.x, y + 1.7, s.pos.z]} />
+      <Pill icon={ICON[s.kind]} text={s.stock >= s.max ? 'MAX' : `${s.stock}/${s.max}`} position={[s.pos.x, y + 1.7 * STATION_SCALE, s.pos.z]} />
       {s.feed && (
         // Food bar turns into a warning when the feeder is empty.
-        <Pill icon={ICON[s.feed.kind]} text={s.feed.stock === 0 ? `¡Hambre! 0/${s.feed.cap}` : `${s.feed.stock}/${s.feed.cap}`} position={[s.pos.x + 1.1, y + 1.2, s.pos.z - 0.4]} />
+        <Pill icon={ICON[s.feed.kind]} text={s.feed.stock === 0 ? `¡Hambre! 0/${s.feed.cap}` : `${s.feed.stock}/${s.feed.cap}`} position={[s.pos.x + 1.1 * STATION_SCALE, y + 1.2 * STATION_SCALE, s.pos.z - 0.4 * STATION_SCALE]} />
       )}
     </>
   )
@@ -54,7 +55,7 @@ function ShelfView({ s }: { s: Shelf }) {
   const y = floorY(s.pos.x, s.pos.z)
   return (
     <>
-      <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]}>
+      <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]} scale={STATION_SCALE}>
         <PopIn bornAt={s.bornAt}>
           {s.model === 'crate' ? (
             <Crate product={s.kind} cardboard count={s.stock} pad={false} />
@@ -66,7 +67,7 @@ function ShelfView({ s }: { s: Shelf }) {
         </PopIn>
       </group>
       <ZonePad rect={s.pad} />
-      <Pill icon={ICON[s.kind]} text={s.stock >= s.cap ? 'MAX' : `${s.stock}/${s.cap}`} position={[s.pos.x + 1.1, y + 1.9, s.pos.z]} />
+      <Pill icon={ICON[s.kind]} text={s.stock >= s.cap ? 'MAX' : `${s.stock}/${s.cap}`} position={[s.pos.x + 1.1 * STATION_SCALE, y + 1.9 * STATION_SCALE, s.pos.z]} />
     </>
   )
 }
@@ -77,7 +78,7 @@ function MachineView({ s }: { s: Machine }) {
   const inputs = (Object.keys(s.recipe.in) as ItemKind[]).map((k) => ({ kind: k, count: s.input[k] ?? 0 }))
   return (
     <>
-      <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]}>
+      <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]} scale={STATION_SCALE}>
         <PopIn bornAt={s.bornAt}>
           <MachineStation
             model={s.model}
@@ -93,9 +94,9 @@ function MachineView({ s }: { s: Machine }) {
       {/* one pad: left half drops ingredients, right half collects the product */}
       <ZonePad rect={s.pad} zones={[s.inZone, s.outZone]} />
       {inputs.map((inp, i) => (
-        <Pill key={inp.kind} icon={ICON[inp.kind]} text={`${inp.count}/${s.inputCap}`} position={[s.inZone.x - 0.2, y + 1.3 + i * 0.35, s.pos.z]} />
+        <Pill key={inp.kind} icon={ICON[inp.kind]} text={`${inp.count}/${s.inputCap}`} position={[s.inZone.x - 0.2, y + 1.3 * STATION_SCALE + i * 0.35, s.pos.z]} />
       ))}
-      <Pill icon={ICON[s.recipe.out]} text={s.output >= s.outputCap ? 'MAX' : `${s.output}/${s.outputCap}`} position={[s.outZone.x + 0.2, y + 1.3, s.pos.z]} />
+      <Pill icon={ICON[s.recipe.out]} text={s.output >= s.outputCap ? 'MAX' : `${s.output}/${s.outputCap}`} position={[s.outZone.x + 0.2, y + 1.3 * STATION_SCALE, s.pos.z]} />
     </>
   )
 }
@@ -107,8 +108,8 @@ function Cashier({ x, y, z, turn }: { x: number; y: number; z: number; turn: Qua
     // (PopIn animates rotation.y and would reset it)
     <group position={[x, y, z]} rotation={[0, turnRadians(turn), 0]}>
       <PopIn bornAt={bornAt}>
-        {/* navy suit + bow tie: the cashier dresses apart from the pink staff */}
-        <Character color={CASHIER_COLOR} hat="visor" hatColor={C.wallStripe} tie />
+        {/* navy suit + necktie: the cashier dresses apart from the pink staff */}
+        <Character scale={CHARACTER_SCALE} color={CASHIER_COLOR} hat="visor" hatColor={C.wallStripe} tie />
       </PopIn>
     </group>
   )
@@ -119,7 +120,7 @@ function CheckoutView({ s }: { s: Checkout }) {
   const y = floorY(s.pos.x, s.pos.z)
   return (
     <>
-      <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]}>
+      <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]} scale={STATION_SCALE}>
         <PopIn bornAt={s.bornAt}>
           {/* no cap on bills: the taller the pile, the stronger the sense of profit */}
           <CheckoutModel bills={Math.ceil(s.cash / 5)} pad={false} />
@@ -128,8 +129,8 @@ function CheckoutView({ s }: { s: Checkout }) {
       <ZonePad rect={s.pad} />
       {s.cashier && <Cashier x={s.spot.x} y={y} z={s.spot.z} turn={s.turn} />}
       {s.cash > 0 && (() => {
-        const p = localPoint(s.pos, { x: 0.9, z: 0 }, s.turn)
-        return <Pill icon="money" text={`$${s.cash}`} position={[p.x, y + 1.9, p.z]} />
+        const p = stationPoint(s, 0.9, 0)
+        return <Pill icon="money" text={`$${s.cash}`} position={[p.x, y + 1.9 * STATION_SCALE, p.z]} />
       })()}
     </>
   )

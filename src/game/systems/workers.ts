@@ -1,6 +1,7 @@
 import { EMPTY_SHELF_PRIORITY, WORKER_STUCK_TIME, WORKER_TRANSFER } from '../config'
 import type { ItemKind, Machine, Producer, Rect, Route, Shelf, Station, TrashDef, Vec2, Worker } from '../types'
 import { activeTrash, approach, dist, groundY, shelfSlotPos, trashZone, walkPath, type World } from '../world'
+import { CHARACTER_SCALE } from '../sizes'
 
 // Employees: each role has a set of possible routes (source -> destination).
 // An idle worker picks the best route: serving waiting customers first, then covering
@@ -214,7 +215,7 @@ export function updateWorkers(w: World, dt: number) {
       if (!wk.path.length) {
         const bin = wk.trashAt ?? nearestTrash(w, wk.pos)
         if (wk.carry && wk.count > 0) {
-          w.events.push({ type: 'fly', kind: wk.carry, from: [wk.pos.x, groundY(w, wk.pos.x, wk.pos.z) + 1.2, wk.pos.z], to: { type: 'point', p: [bin.pos.x, 0.9, bin.pos.z] } })
+          w.events.push({ type: 'fly', kind: wk.carry, from: [wk.pos.x, groundY(w, wk.pos.x, wk.pos.z) + 1.2 * CHARACTER_SCALE, wk.pos.z], to: { type: 'point', p: [bin.pos.x, 0.9, bin.pos.z] } })
           w.events.push({ type: 'trash', pos: bin.pos })
         }
         wk.carry = null
@@ -320,7 +321,7 @@ export function updateWorkers(w: World, dt: number) {
     if (wk.state === 'unloading' && wk.timer <= 0) {
       const dest = byId(w, r.to)
       if (dest && wk.count > 0 && needOf(w, dest, r.toSlot, r.kind) > 0) {
-        const from: [number, number, number] = [wk.pos.x, groundY(w, wk.pos.x, wk.pos.z) + 1.2, wk.pos.z]
+        const from: [number, number, number] = [wk.pos.x, groundY(w, wk.pos.x, wk.pos.z) + 1.2 * CHARACTER_SCALE, wk.pos.z]
         let to: [number, number, number] = pos3(w, dest)
         if (dest.type === 'shelf') {
           to = shelfSlotPos(w, dest as Shelf, dest.stock)

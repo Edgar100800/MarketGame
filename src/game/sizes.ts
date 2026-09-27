@@ -22,6 +22,19 @@ export const PADS = {
   buy: { w: 1.8, d: 1.8 },
 } as const
 
+/**
+ * Uniform size of every station (shelves, machines, checkout, farm, trash bins) against the characters.
+ * Scales the drawn model and all its local geometry: pads, zones, colliders, slots and hand-off points.
+ * PADS and COLLIDERS are authored at scale 1.
+ */
+export const STATION_SCALE = 0.8
+
+/**
+ * Uniform size of every person (player, customers, staff) with what they carry.
+ * Also scales the carried-stack heights, hand-off heights and the player's collision radius.
+ */
+export const CHARACTER_SCALE = 0.8
+
 /** Solid rectangles, mostly fractions of the pads they belong to. */
 export const COLLIDERS = {
   crop: { w: 2.6, d: 0.7 },

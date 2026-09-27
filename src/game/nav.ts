@@ -35,6 +35,13 @@ export class Grid {
     return { x: this.x0 + (c + 0.5) * this.cell, z: this.z0 + (r + 0.5) * this.cell }
   }
 
+  /** True when a world point falls on a walkable cell. */
+  isFreeAt(p: Vec2) {
+    const c = Math.floor((p.x - this.x0) / this.cell)
+    const r = Math.floor((p.z - this.z0) / this.cell)
+    return this.isFree(c, r)
+  }
+
   isFree(c: number, r: number) {
     return c >= 0 && r >= 0 && c < this.cols && r < this.rows && !this.blocked[r * this.cols + c]
   }

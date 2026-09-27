@@ -3,6 +3,7 @@ import { PADS } from '../sizes'
 import type { ItemKind, Vec2, Vec3 } from '../types'
 import { pushItem, removeItem, stackHas, stackKinds, stackRoom } from '../stack'
 import { activeTrash, applyUnlock, groundY, inRect, shelfSlotPos, stationPoint, trashZone, unlockDef, type World } from '../world'
+import { CHARACTER_SCALE } from '../sizes'
 
 const at = (p: Vec2, y = 1): Vec3 => [p.x, y, p.z]
 
@@ -16,7 +17,7 @@ function fib(n: number): number {
 
 /** Height of stack slot `i` above the ground under the player (flight start points). */
 function slotY(w: World, i: number) {
-  return groundY(w, w.player.pos.x, w.player.pos.z) + 0.85 + i * 0.26
+  return groundY(w, w.player.pos.x, w.player.pos.z) + (0.85 + i * 0.26) * CHARACTER_SCALE
 }
 
 function give(w: World, kind: ItemKind, from: Vec3) {
@@ -122,7 +123,7 @@ export function interact(w: World, dt: number) {
       const step = Math.min(Math.ceil(def.price / BUY_STEPS), def.price - w.zonePaid[id], w.money)
       w.money -= step
       w.zonePaid[id] += step
-      w.events.push({ type: 'fly', kind: 'money', from: [p.pos.x, 1.2, p.pos.z], to: { type: 'point', p: [def.zone.x, 0.1, def.zone.z] } })
+      w.events.push({ type: 'fly', kind: 'money', from: [p.pos.x, 1.2 * CHARACTER_SCALE, p.pos.z], to: { type: 'point', p: [def.zone.x, 0.1, def.zone.z] } })
       p.payTimer += BUY_INTERVAL
     }
     if (w.zonePaid[id] >= def.price) {

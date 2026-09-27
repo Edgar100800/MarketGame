@@ -280,6 +280,8 @@ export interface Customer {
   takeTimer: number
   /** Seconds left before giving up on an empty shelf. */
   patience: number
+  /** World time the customer got in line at its current shelf (orders the shelf line). */
+  queuedAt?: number
 }
 
 export type FlyTarget = { type: 'player' } | { type: 'customer'; id: number } | { type: 'worker'; id: string } | { type: 'point'; p: Vec3 }

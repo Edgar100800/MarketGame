@@ -10,6 +10,7 @@ import { DecoView } from './DecoView'
 import { Pill, PriceTag } from '../models/Labels'
 import { onGameEvent, useGame, world } from '../game/state'
 import { activeDoors, activeTrash, trashZone, unlockDef } from '../game/world'
+import { STATION_SCALE } from '../game/sizes'
 import type { AreaDef } from '../game/types'
 import { PopIn } from './PopIn'
 import { floorY } from './StationView'
@@ -249,7 +250,7 @@ function FunctionalTrashBin({ x, z }: { x: number; z: number }) {
       }),
     [x, z],
   )
-  return <TrashBin useCount={useCount} position={[x, floorY(x, z), z]} />
+  return <TrashBin useCount={useCount} position={[x, floorY(x, z), z]} scale={STATION_SCALE} />
 }
 
 /** Functional trash bins (throw away what you carry). */

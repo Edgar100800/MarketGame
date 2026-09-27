@@ -11,7 +11,7 @@ import { pushItem, setStack } from './stack'
 import { restoreWorld, snapshotWorld } from './save'
 import { buyUpgrade } from './upgrades'
 import { applyLayout, layoutOf, stationRelations, unlockTiers, useEditor, type LayoutFile } from './editor'
-import { PADS, SLOT_SIZE } from './sizes'
+import { PADS, SLOT_SIZE, STATION_SCALE as S } from './sizes'
 import { PRICE } from './config'
 import { migrateUnlocks } from './state'
 import type { Checkout, Machine, Producer, Shelf, Vec2 } from './types'
@@ -93,6 +93,39 @@ describe('customers', () => {
     expect(w.customers.length).toBe(0)
     expect(w.earned).toBe(PRICE.tomato * requested)
     expect(w.money).toBe(PRICE.tomato * requested) // collected from the counter
+  })
+
+  test('customers line up one behind another, facing forward, at shelves and at the checkout', () => {
+    const w = createWorld(LEVEL1, { seed: 3 })
+    w.spawnTimer = 999
+    const shelf = station<Shelf>(w, 'shelfTomato')
+    const checkout = station<Checkout>(w, 'checkout1')
+    shelf.stock = 0
+    const group = [0, 1, 2].map(() => spawnCustomer(w, 'shelfTomato')!)
+    for (let t = 0; t < 15; t += 1 / 30) tick(w, idle, 1 / 30)
+    // empty shelf: a straight line out from the shelf front, everyone looking toward the shelf
+    const xs = group.map((c) => c.pos.x)
+    const zs = group.map((c) => c.pos.z)
+    for (const x of xs) expect(x).toBeCloseTo(shelf.customerSpot.x, 1)
+    expect(zs[0]).toBeCloseTo(shelf.customerSpot.z, 1)
+    expect(zs[1]).toBeGreaterThan(zs[0])
+    expect(zs[2]).toBeGreaterThan(zs[1])
+    for (const c of group) expect(Math.abs(Math.abs(c.facing) - Math.PI)).toBeLessThan(0.05)
+    // only the first in line has been waiting with patience running out
+    expect(group[1].patience).toBeGreaterThan(group[0].patience)
+
+    // stock arrives; with nobody at the counter they queue for the checkout in a line
+    shelf.stock = 12
+    for (let t = 0; t < 20; t += 1 / 30) tick(w, idle, 1 / 30)
+    const queue = checkout.queue.map((id) => w.customers.find((c) => c.id === id)!)
+    expect(queue.length).toBe(3)
+    for (const c of queue) {
+      expect(c.state).toBe('inQueue')
+      expect(c.pos.x).toBeCloseTo(checkout.queueStart.x, 1)
+      expect(Math.abs(Math.abs(c.facing) - Math.PI)).toBeLessThan(0.05)
+    }
+    expect(queue[1].pos.z).toBeGreaterThan(queue[0].pos.z)
+    expect(queue[2].pos.z).toBeGreaterThan(queue[1].pos.z)
   })
 
   test('carry mode follows hands, basket and cart thresholds', () => {
@@ -294,9 +327,10 @@ describe('shelf filling', () => {
 describe('station rotation', () => {
   test('rotates shelf geometry and product slots in quarter turns', () => {
     const shelf = buildStation({ type: 'shelf', id: 'rotated', model: 'shelf', kind: 'tomato', pos: { x: 2, z: 3 }, turn: 1, cap: 12 }, 0) as Shelf
-    expect(shelf.collider!.w).toBe(1.2)
-    expect(shelf.collider!.d).toBe(2.1)
-    expect(shelf.customerSpot).toEqual({ x: 3.25, z: 3 })
+    expect(shelf.collider!.w).toBeCloseTo(1.2 * S)
+    expect(shelf.collider!.d).toBeCloseTo(2.1 * S)
+    expect(shelf.customerSpot.x).toBeCloseTo(2 + 1.25 * S)
+    expect(shelf.customerSpot.z).toBeCloseTo(3)
 
     const w = createWorld({ ...LEVEL1, start: [] })
     const first = shelfSlotPos(w, shelf, 0)
@@ -309,9 +343,9 @@ describe('station rotation', () => {
       { type: 'machine', id: 'rotated', model: 'canner', pos: { x: 0, z: 0 }, turn: 2, recipe: { in: { tomato: 1 }, out: 'tomatoCan', n: 1, time: 1 }, inputCap: 2, outputCap: 2 },
       0,
     ) as Machine
-    expect(machine.inZone.x).toBe(0.95)
-    expect(machine.outZone.x).toBe(-0.95)
-    expect(machine.pad.z).toBe(-0.55)
+    expect(machine.inZone.x).toBeCloseTo(0.95 * S)
+    expect(machine.outZone.x).toBeCloseTo(-0.95 * S)
+    expect(machine.pad.z).toBeCloseTo(-0.55 * S)
   })
 })
 
@@ -445,7 +479,7 @@ describe('farm pack', () => {
       const pad = station<Producer>(w, id).pad
       return { w: Math.round(pad.w * 10), d: Math.round(pad.d * 10) }
     })
-    expect(sizes[0]).toEqual({ w: 34, d: 30 })
+    expect(sizes[0]).toEqual({ w: Math.round(PADS.crop.w * S * 10), d: Math.round(PADS.crop.d * S * 10) })
     expect(sizes[1]).toEqual(sizes[0])
     expect(sizes[2]).toEqual(sizes[0])
   })
@@ -564,21 +598,21 @@ describe('standard sizes', () => {
       const { w: pw, d } = station<Producer>(w, id).pad
       return `${Math.round(pw * 10)}x${Math.round(d * 10)}`
     }
-    expect(padOf('planter1')).toBe(`${Math.round(PADS.crop.w * 10)}x${Math.round(PADS.crop.d * 10)}`)
+    expect(padOf('planter1')).toBe(`${Math.round(PADS.crop.w * S * 10)}x${Math.round(PADS.crop.d * S * 10)}`)
     expect(padOf('patch1')).toBe(padOf('planter1'))
     expect(padOf('tree1')).toBe(padOf('planter1'))
-    expect(padOf('nest1')).toBe(`${Math.round(PADS.coop.w * 10)}x${Math.round(PADS.coop.d * 10)}`)
-    expect(padOf('cow1')).toBe(`${Math.round(PADS.barn.w * 10)}x${Math.round(PADS.barn.d * 10)}`)
+    expect(padOf('nest1')).toBe(`${Math.round(PADS.coop.w * S * 10)}x${Math.round(PADS.coop.d * S * 10)}`)
+    expect(padOf('cow1')).toBe(`${Math.round(PADS.barn.w * S * 10)}x${Math.round(PADS.barn.d * S * 10)}`)
     expect(padOf('plot1')).toBe(padOf('cow1'))
     const shelfPad = station<Shelf>(w, 'shelfTomato').pad
     const cratePad = station<Shelf>(w, 'shelfHoney').pad
     const fridgePad = station<Shelf>(w, 'shelfMilk').pad
     for (const pad of [cratePad, fridgePad]) {
-      expect(Math.round(pad.w * 10)).toBe(Math.round(PADS.shelf.w * 10))
-      expect(Math.round(pad.d * 10)).toBe(Math.round(PADS.shelf.d * 10))
+      expect(Math.round(pad.w * 10)).toBe(Math.round(PADS.shelf.w * S * 10))
+      expect(Math.round(pad.d * 10)).toBe(Math.round(PADS.shelf.d * S * 10))
     }
-    expect(station<Machine>(w, 'canner').pad.w).toBe(PADS.machine.w)
-    expect(station<Checkout>(w, 'checkout1').pad.w).toBe(PADS.checkout.w)
+    expect(station<Machine>(w, 'canner').pad.w).toBeCloseTo(PADS.machine.w * S)
+    expect(station<Checkout>(w, 'checkout1').pad.w).toBeCloseTo(PADS.checkout.w * S)
   })
 
   test('product spacing only uses the three standard tiers', () => {
@@ -611,7 +645,7 @@ describe('editor areas', () => {
     expect(bin.pos.z).toBe(3.5)
     // the throwing zone follows the bin
     expect(trashZone(bin).x).toBe(5.5)
-    expect(trashZone(bin).z).toBe(3.95)
+    expect(trashZone(bin).z).toBeCloseTo(3.5 + 0.45 * S)
   })
 
   test('every purchasable area has an unlock and vice versa', () => {

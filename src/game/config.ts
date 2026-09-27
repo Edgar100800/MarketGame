@@ -1,9 +1,11 @@
 import type { ItemKind, ProductKind } from './types'
+import { CHARACTER_SCALE } from './sizes'
 
 // All balance numbers in one place.
 
-export const PLAYER_SPEED = 5.2
-export const PLAYER_RADIUS = 0.35
+/** Top speed (full joystick). 0.85 of the old 5.2, to match the smaller characters. */
+export const PLAYER_SPEED = 4.42
+export const PLAYER_RADIUS = 0.35 * CHARACTER_SCALE
 export const PLAYER_CAP = 4
 
 export const WORKER_SPEED = 2.4
@@ -41,9 +43,6 @@ export const CUSTOMER_MAX_ITEMS = 8
 export const CUSTOMER_MAX_KINDS = 3
 export const PAY_PER_ITEM = 0.12
 
-/** Dev multiplier: x10 so progression can be seen fast. Set to 1 for real balance. */
-export const PRICE_MULT = 10
-
 export const PRICE: Record<ItemKind, number> = Object.fromEntries(
   Object.entries({
     tomato: 2,
@@ -60,7 +59,7 @@ export const PRICE: Record<ItemKind, number> = Object.fromEntries(
     apple: 4,
     jam: 16,
     pizza: 24,
-  }).map(([kind, value]) => [kind, value * PRICE_MULT]),
+  }),
 ) as Record<ItemKind, number>
 
 export const ICON: Record<ItemKind, ProductKind> = {

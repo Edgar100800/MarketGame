@@ -8,6 +8,7 @@ import { SafeHtml } from '../models/Labels'
 import { onGameEvent, useGame, world } from '../game/state'
 import type { FlyKind, FlyTarget, Vec3 } from '../game/types'
 import { floorY } from './StationView'
+import { CHARACTER_SCALE } from '../game/sizes'
 
 const FLY_TIME = 0.28
 
@@ -17,16 +18,16 @@ function targetPos(to: FlyTarget): Vec3 | null {
   if (to.type === 'point') return to.p
   if (to.type === 'player') {
     const p = world.player
-    return [p.pos.x, floorY(p.pos.x, p.pos.z) + 0.8 + p.stack.length * 0.26, p.pos.z]
+    return [p.pos.x, floorY(p.pos.x, p.pos.z) + (0.8 + p.stack.length * 0.26) * CHARACTER_SCALE, p.pos.z]
   }
   if (to.type === 'worker') {
     const wk = world.workers.find((x) => x.id === to.id)
-    return wk ? [wk.pos.x, floorY(wk.pos.x, wk.pos.z) + 0.8 + wk.count * 0.25, wk.pos.z] : null
+    return wk ? [wk.pos.x, floorY(wk.pos.x, wk.pos.z) + (0.8 + wk.count * 0.25) * CHARACTER_SCALE, wk.pos.z] : null
   }
   const c = world.customers.find((x) => x.id === to.id)
   if (!c) return null
   const y = c.carryMode === 'cart' ? 0.75 : c.carryMode === 'basket' ? 1.0 : 1.0 + c.items.length * 0.12
-  return [c.pos.x, floorY(c.pos.x, c.pos.z) + y, c.pos.z]
+  return [c.pos.x, floorY(c.pos.x, c.pos.z) + y * CHARACTER_SCALE, c.pos.z]
 }
 
 function FlyingItem({ f, onDone }: { f: Flight; onDone: (key: number) => void }) {

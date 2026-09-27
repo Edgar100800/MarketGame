@@ -13,10 +13,14 @@ import {
   SPAWN_MAX,
   SPAWN_MIN,
 } from '../config'
-import type { Checkout, Customer, CustomerCarryMode, HatKind, Shelf, ShoppingLine, Vec2 } from '../types'
+import type { Checkout, Customer, CustomerCarryMode, HatKind, Shelf, ShoppingLine, Station, Vec2 } from '../types'
 import { activeDoors, dist, doorOutside, inRect, shelfSlotPos, stationDirection, stationPoint, walkPath, type World } from '../world'
+import { CHARACTER_SCALE } from '../sizes'
 
-const QUEUE_GAP = 0.9
+/** Space one customer takes in a line (behind the one ahead), by what they carry: carts are long. */
+function lineGap(customer: Customer | undefined) {
+  return (customer?.carryMode === 'cart' ? 1.6 : 0.95) * CHARACTER_SCALE
+}
 
 /** Customer-only headwear: workers never wear any of these. */
 const CUSTOMER_HEADS: HatKind[] = ['beanie', 'bob', 'bun', 'afro', 'bucket']
@@ -36,9 +40,74 @@ function checkouts(w: World) {
   return w.stations.filter((station): station is Checkout => station.type === 'checkout' && station.bornAt <= w.time)
 }
 
-function queueSlot(check: Checkout, index: number): Vec2 {
-  const gap = stationDirection(check, index * QUEUE_GAP, 0)
-  return { x: check.queueStart.x + gap.x, z: check.queueStart.z + gap.z }
+/**
+ * Standing spots of a line: straight out from `start` along `out`, one gap per person.
+ * When furniture or a wall is in the way the line turns 90 degrees toward the free side,
+ * so it stays tidy in a compact store instead of cutting through shelves.
+ */
+function lineSlots(w: World, start: Vec2, out: Vec2, gaps: number[]): Vec2[] {
+  const slots = [start]
+  let dir = out
+  const clear = (p: Vec2) => w.grid.isFreeAt(p) && slots.every((s) => dist(s, p) > 0.4)
+  const step = (from: Vec2, d: Vec2, gap: number) => ({ x: from.x + d.x * gap, z: from.z + d.z * gap })
+  for (let i = 1; i < gaps.length; i++) {
+    const prev = slots[slots.length - 1]
+    let next = step(prev, dir, gaps[i])
+    if (!clear(next)) {
+      // turn toward the side with more room (checked a few people ahead)
+      const room = (d: Vec2) => {
+        let n = 0
+        for (let k = 1; k <= 4 && clear(step(prev, d, gaps[i] * k)); k++) n++
+        return n
+      }
+      const sides = [{ x: -dir.z, z: dir.x }, { x: dir.z, z: -dir.x }].map((d) => ({ d, n: room(d) })).sort((a, b) => b.n - a.n)
+      if (sides[0].n > 0) {
+        dir = sides[0].d
+        next = step(prev, dir, gaps[i])
+      }
+    }
+    slots.push(next)
+  }
+  return slots
+}
+
+/** Direction the line grows in, away from the station front (local +z). */
+function lineOut(station: Station): Vec2 {
+  return stationDirection(station, 0, 1)
+}
+
+function customerById(w: World, id: number) {
+  return w.customers.find((candidate) => candidate.id === id)
+}
+
+function checkoutSlots(w: World, check: Checkout, extra?: Customer): Vec2[] {
+  const people = check.queue.map((id) => customerById(w, id))
+  if (extra) people.push(extra)
+  return lineSlots(w, check.queueStart, lineOut(check), people.map(lineGap))
+}
+
+/** Customers shopping at a shelf, in line order (first to arrive first). */
+function shelfLine(w: World, shelf: Shelf): Customer[] {
+  return w.customers
+    .filter((customer) => activeLine(customer)?.shelfId === shelf.id && (customer.state === 'toShelf' || customer.state === 'waitStock'))
+    .sort((a, b) => (a.queuedAt ?? 0) - (b.queuedAt ?? 0) || a.id - b.id)
+}
+
+function shelfSlots(w: World, shelf: Shelf, line = shelfLine(w, shelf)): Vec2[] {
+  return lineSlots(w, shelf.customerSpot, lineOut(shelf), line.map(lineGap))
+}
+
+/** Stand still in a line: the head looks at the station, everyone else at the back of the one ahead. */
+function faceInLine(customer: Customer, slots: Vec2[], index: number, out: Vec2) {
+  const ahead = index > 0 ? slots[index - 1] : { x: slots[0].x - out.x, z: slots[0].z - out.z }
+  customer.facing = Math.atan2(ahead.x - customer.pos.x, ahead.z - customer.pos.z)
+}
+
+/** Walks to the line spot if it moved (someone ahead left), then faces forward. */
+function keepInLine(customer: Customer, slots: Vec2[], index: number, out: Vec2) {
+  const slot = slots[index]
+  if (dist(customer.pos, slot) > 0.05 && !customer.path.length) customer.path = [slot]
+  if (!customer.path.length) faceInLine(customer, slots, index, out)
 }
 
 function maxCustomers(w: World) {
@@ -84,11 +153,6 @@ function shoppingList(w: World, all: Shelf[], forced?: Shelf): ShoppingLine[] {
   }))
 }
 
-function shelfSpot(w: World, shelf: Shelf, customerId: number) {
-  const busy = w.customers.filter((customer) => customer.id !== customerId && activeLine(customer)?.shelfId === shelf.id && (customer.state === 'toShelf' || customer.state === 'waitStock')).length
-  const spread = stationDirection(shelf, (busy % 3 - 1) * 0.6, Math.floor(busy / 3) * 0.5)
-  return { x: shelf.customerSpot.x + spread.x, z: shelf.customerSpot.z + spread.z }
-}
 
 function goToLine(w: World, customer: Customer) {
   const line = activeLine(customer)
@@ -96,7 +160,9 @@ function goToLine(w: World, customer: Customer) {
   if (!line || !shelf) return false
   line.status = 'active'
   customer.state = 'toShelf'
-  customer.path = w.grid.findPath(customer.pos, shelfSpot(w, shelf, customer.id))
+  customer.queuedAt = w.time
+  const order = shelfLine(w, shelf)
+  customer.path = w.grid.findPath(customer.pos, shelfSlots(w, shelf, order)[order.indexOf(customer)])
   customer.patience = PATIENCE
   customer.takeTimer = 0
   return true
@@ -125,10 +191,11 @@ function joinQueue(w: World, customer: Customer) {
   const all = checkouts(w)
   if (!all.length) return leave(w, customer)
   const check = all.reduce((best, candidate) => (candidate.queue.length < best.queue.length ? candidate : best), all[0])
+  const slots = checkoutSlots(w, check, customer)
   check.queue.push(customer.id)
   customer.checkoutId = check.id
   customer.state = 'toQueue'
-  customer.path = w.grid.findPath(customer.pos, queueSlot(check, check.queue.length - 1))
+  customer.path = w.grid.findPath(customer.pos, slots[slots.length - 1])
 }
 
 function advanceShopping(w: World, customer: Customer, skipped = false) {
@@ -196,8 +263,12 @@ export function updateCustomers(w: World, dt: number) {
     if (customer.state === 'waitStock') {
       const line = activeLine(customer)
       const shelf = shelves(w).find((candidate) => candidate.id === line?.shelfId)
+      // one at a time: only the first in line takes, the rest wait their turn (patience paused)
+      const order = shelf ? shelfLine(w, shelf) : []
+      const index = order.indexOf(customer)
+      if (shelf && index >= 0) keepInLine(customer, shelfSlots(w, shelf, order), index, lineOut(shelf))
+      if (index > 0 || customer.path.length) continue
       customer.takeTimer -= dt
-      if (shelf) customer.facing = Math.atan2(shelf.pos.x - customer.pos.x, shelf.pos.z - customer.pos.z)
       if (shelf && line && customer.takeTimer <= 0 && shelf.stock > 0) {
         shelf.stock--
         line.collected++
@@ -215,12 +286,11 @@ export function updateCustomers(w: World, dt: number) {
   }
 
   for (const check of checkouts(w)) {
+    const slots = checkoutSlots(w, check)
     check.queue.forEach((id, index) => {
-      const customer = w.customers.find((candidate) => candidate.id === id)
+      const customer = customerById(w, id)
       if (!customer || customer.state !== 'inQueue') return
-      const slot = queueSlot(check, index)
-      if (dist(customer.pos, slot) > 0.05 && !customer.path.length) customer.path = [slot]
-      if (!customer.path.length) customer.facing = Math.atan2(check.pos.x - customer.pos.x, check.pos.z - customer.pos.z)
+      keepInLine(customer, slots, index, lineOut(check))
     })
     const head = w.customers.find((customer) => customer.id === check.queue[0])
     if (head && head.state === 'inQueue' && !head.path.length && attended(w, check)) {
@@ -231,7 +301,7 @@ export function updateCustomers(w: World, dt: number) {
         check.cash += amount
         w.earned += amount
         const money = stationPoint(check, 0.9, 0)
-        w.events.push({ type: 'fly', kind: 'money', from: [head.pos.x, 1.2, head.pos.z], to: { type: 'point', p: [money.x, 0.9, money.z] } })
+        w.events.push({ type: 'fly', kind: 'money', from: [head.pos.x, 1.2 * CHARACTER_SCALE, head.pos.z], to: { type: 'point', p: [money.x, 0.9, money.z] } })
         w.events.push({ type: 'float', text: `+$${amount}`, pos: [check.pos.x, 2.2, check.pos.z] })
         check.queue.shift()
         leave(w, head)

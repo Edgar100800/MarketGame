@@ -13,7 +13,7 @@ import { Customers, PlayerView, Workers } from '../components/Actors'
 import { FloatingTexts, FlyingItems, TutorialArrow, UnlockBursts } from '../components/Effects'
 import { BuyZones, StoreShell } from '../components/StoreShell'
 import { buildStation } from '../game/world'
-import { PADS } from '../game/sizes'
+import { PADS, STATION_SCALE } from '../game/sizes'
 import { stationDefs, stationRelations, TIER_COLORS, unlockTiers, useEditor, type EditorSelection } from '../game/editor'
 import { SafeHtml } from '../models/Labels'
 import { BuyZone, TrashBin } from '../models/Store'
@@ -230,7 +230,7 @@ function EditorScene() {
         const active = selected?.type === 'trash' && selected.id === bin.id
         return (
           <group key={bin.id}>
-            <TrashBin position={[bin.pos.x, 0, bin.pos.z]} />
+            <TrashBin position={[bin.pos.x, 0, bin.pos.z]} scale={STATION_SCALE} />
             <mesh
               position={[bin.pos.x, 0.2, bin.pos.z]}
               onPointerDown={(event) => {
@@ -238,7 +238,7 @@ function EditorScene() {
                 beginDrag({ type: 'trash', id: bin.id }, bin.pos)
               }}
             >
-              <boxGeometry args={[PADS.bin.w + 0.1, 0.16, PADS.bin.d + 0.1]} />
+              <boxGeometry args={[PADS.bin.w * STATION_SCALE + 0.1, 0.16, PADS.bin.d * STATION_SCALE + 0.1]} />
               <meshBasicMaterial color="#7cff5e" transparent opacity={active ? 0.42 : 0.001} depthWrite={false} />
             </mesh>
           </group>
