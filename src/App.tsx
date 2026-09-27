@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { NoToneMapping, SRGBColorSpace } from 'three'
 import { Level1 } from './scenes/Level1'
 import { Hud, Joystick } from './components/Hud'
-import { saveNow } from './game/state'
+import { debug, saveNow } from './game/state'
 
 export default function App() {
   useEffect(() => {
@@ -26,8 +26,8 @@ export default function App() {
       >
         <Level1 />
       </Canvas>
-      <Joystick />
-      <Hud />
+      {!debug.shot && <Joystick />}
+      {!debug.shot && <Hud />}
     </>
   )
 }

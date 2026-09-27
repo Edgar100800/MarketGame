@@ -54,6 +54,19 @@ function CameraRig() {
   return <PerspectiveCamera ref={cam} makeDefault fov={32} position={[world.player.pos.x + OFFSET.x, OFFSET.y, world.player.pos.z + OFFSET.z]} />
 }
 
+/** `?shot`: fixed wide view of the whole store for the share preview image. */
+function ShotCamera() {
+  const p = new URLSearchParams(location.search)
+  const num = (key: string, fallback: number) => (p.has(key) ? Number(p.get(key)) : fallback)
+  const target = new Vector3(num('cx', 3.5), 0, num('cz', 1.5))
+  const pitch = (num('pitch', 48) * Math.PI) / 180
+  const dist = num('dist', 38)
+  const offset = new Vector3(Math.sin(CAMERA_YAW) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, Math.cos(CAMERA_YAW) * Math.cos(pitch) * dist)
+  const cam = useRef<Cam>(null)
+  useFrame(() => cam.current?.lookAt(target))
+  return <PerspectiveCamera ref={cam} makeDefault fov={num('fov', 32)} position={target.clone().add(offset).toArray()} />
+}
+
 function Stations() {
   useGame((s) => s.version)
   return (
@@ -289,7 +302,7 @@ export function Level1({ editing = false }: { editing?: boolean }) {
   return (
     <>
       {!editing && <GameLoop />}
-      {editing ? <EditorScene /> : <CameraRig />}
+      {editing ? <EditorScene /> : debug.shot ? <ShotCamera /> : <CameraRig />}
       <color attach="background" args={[C.grass]} />
       <Lighting size={26} />
       <StoreShell editing={editing} />
@@ -301,7 +314,7 @@ export function Level1({ editing = false }: { editing?: boolean }) {
       {!editing && <FlyingItems />}
       {!editing && <FloatingTexts />}
       {!editing && <UnlockBursts />}
-      {!editing && <TutorialArrow />}
+      {!editing && !debug.shot && <TutorialArrow />}
     </>
   )
 }

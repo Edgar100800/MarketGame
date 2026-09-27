@@ -3,6 +3,7 @@ import { Html } from '@react-three/drei'
 import { useThree, type ThreeElements } from '@react-three/fiber'
 import type { ProductKind } from '../game/types'
 import { ProductIcon } from './Icon2D'
+import { debug } from '../game/state'
 
 type GroupProps = ThreeElements['group']
 
@@ -12,7 +13,7 @@ type GroupProps = ThreeElements['group']
  */
 export function SafeHtml(props: ComponentProps<typeof Html>) {
   const connected = useThree((s) => s.events.connected)
-  return connected ? <Html {...props} /> : null
+  return connected && !debug.shotClean ? <Html {...props} /> : null
 }
 
 export const ICON = {

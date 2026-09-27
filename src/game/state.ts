@@ -75,7 +75,7 @@ export function migrateUnlocks(unlocked: string[] | undefined, level: LevelDef) 
   return [...new Set(unlocked.filter((id) => known.has(id)))]
 }
 
-/** Debug flags: ?money=999 ?fast=5 ?unlock=all|id1,id2 ?reset=1 ?autoplay=1 ?sim=300 (pre-simulate N seconds with the bot) ?upgrades (open the panel) */
+/** Debug flags: ?money=999 ?fast=5 ?unlock=all|id1,id2 ?reset=1 ?autoplay=1 ?sim=300 (pre-simulate N seconds with the bot) ?upgrades (open the panel) ?shot (wide HUD-less camera for share art; ?shot=clean also hides labels; ?cx ?cz ?dist ?pitch ?fov tune it) */
 export const debug = (() => {
   const p = params()
   return {
@@ -88,6 +88,8 @@ export const debug = (() => {
     autoplay: p.has('autoplay'),
     sim: Number(p.get('sim')) || 0,
     upgrades: p.has('upgrades'),
+    shot: p.has('shot'),
+    shotClean: p.get('shot') === 'clean',
   }
 })()
 

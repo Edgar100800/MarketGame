@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!--
+  Share preview (public/share-preview.png, 1200x630). Regenerar:
+  1) bun run dev --port 5199
+  2) google-chrome-stable --headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --hide-scrollbars --force-device-scale-factor=2 --window-size=1200,717 --virtual-time-budget=8000 --screenshot=scripts/share/map.png "http://localhost:5199/?reset&unlock=all&sim=240&shot=clean&dist=27&cx=4.5&cz=0.5&pitch=42"
+  3) google-chrome-stable --headless=new --hide-scrollbars --window-size=1200,717 --virtual-time-budget=5000 --screenshot=/tmp/raw.png "file://$PWD/scripts/share/compose.html"
+  4) magick /tmp/raw.png -crop 1200x630+0+0 +repage public/share-preview.png
+  Subir ?v= en index.html para que WhatsApp refresque su cache.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=block" rel="stylesheet">
+<style>
+*{margin:0;box-sizing:border-box}
+body{width:1200px;height:630px;overflow:hidden;background:#b9ef62;font-family:'Lilita One',sans-serif;position:relative}
+.map{position:absolute;inset:0;background:url(map.png) 0 0/1200px auto no-repeat}
+.shade{position:absolute;inset:0;background:
+ linear-gradient(180deg,rgba(30,25,20,.55) 0%,rgba(30,25,20,.0) 38%),
+ linear-gradient(0deg,rgba(30,25,20,.6) 0%,rgba(30,25,20,0) 30%)}
+.logo{position:absolute;top:34px;left:50%;transform:translateX(-50%) rotate(-2deg);text-align:center}
+.card{background:#fff6dc;border:7px solid #1e1914;border-radius:28px;padding:10px 44px 14px;box-shadow:0 10px 0 #1e1914}
+.kicker{font-size:34px;letter-spacing:10px;color:#1e1914;line-height:1}
+.title{font-size:118px;line-height:.9;color:#ffd23f;-webkit-text-stroke:7px #1e1914;paint-order:stroke fill;text-shadow:0 7px 0 #1e1914}
+.title span{color:#ff8a3d}
+.awning{height:30px;margin:0 16px -7px;border:7px solid #1e1914;border-bottom:none;border-radius:16px 16px 0 0;
+ background:repeating-linear-gradient(90deg,#e8413c 0 38px,#fff 38px 76px)}
+.bottom{position:absolute;bottom:30px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:18px}
+.tag{background:#1e1914cc;color:#fff;font-size:30px;padding:12px 26px;border-radius:40px;border:4px solid #fff}
+.cta{background:#34e0ff;color:#1e1914;font-size:34px;padding:12px 34px;border-radius:40px;border:6px solid #1e1914;box-shadow:0 7px 0 #1e1914}
+</style></head><body>
+<div class="map"></div><div class="shade"></div>
+<div class="logo"><div class="awning"></div><div class="card"><div class="kicker">MINI MART</div><div class="title">L<span>A</span>B</div></div></div>
+<div class="bottom"><div class="tag">Construye · Abastece · Crece</div><div class="cta">¡JUGAR GRATIS!</div></div>
+</body></html>
