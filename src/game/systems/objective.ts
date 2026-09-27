@@ -25,8 +25,12 @@ export function objective(w: World): Objective {
   // a purchase the player is committed to beats the checkout run — money is
   // safe on the counter, but the walk to the zone is wasted if we yank away.
   // Stays only while the wallet can still close the deal.
+  // Aim straight at the zone's center: when a station already occupies the spot,
+  // the player is stopped by its collider right at the edge of the paying pad,
+  // while a free spot would leave the target just outside the paying area.
+  const zonePoint = (u: { zone: { x: number; z: number } }) => ({ x: u.zone.x, z: u.zone.z })
   const sticky = w.stickyBuy ? visible.find((u) => u.id === w.stickyBuy) : undefined
-  if (sticky && canAfford(sticky)) return { text: `Desbloquea: ${sticky.label}`, target: w.grid.freePointNear(sticky.zone) }
+  if (sticky && canAfford(sticky)) return { text: `Desbloquea: ${sticky.label}`, target: zonePoint(sticky) }
   w.stickyBuy = null
 
   // with a cashier the money still piles up on the counter: collect it once there's a good amount
@@ -41,7 +45,7 @@ export function objective(w: World): Objective {
   const affordable = progression.find(canAfford) ?? visible.find((u) => !u.units && canAfford(u)) ?? visible.find(canAfford)
   if (affordable) {
     w.stickyBuy = affordable.id
-    return { text: `Desbloquea: ${affordable.label}`, target: w.grid.freePointNear(affordable.zone) }
+    return { text: `Desbloquea: ${affordable.label}`, target: zonePoint(affordable) }
   }
 
   // stay on the current zone while items can still move (don't leave a job half done)

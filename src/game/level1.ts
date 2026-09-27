@@ -490,7 +490,7 @@ export const LEVEL1: LevelDef = {
       id: 'cashier',
       label: 'Contratar cajero',
       icon: 'money',
-      price: 150,
+      price: 40,
       // right next to the counter, on the cashier side
       zone: { x: -2, z: -5.8 },
       spawns: [],

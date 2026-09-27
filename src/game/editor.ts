@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { LEVEL1 } from './level1'
 import { LEVEL1_V1 } from './level1.v1'
+import bakedLayout from './level1.layout.json'
+import bakedLayoutV1 from './level1.v1.layout.json'
 import { snap } from './spatial'
 import type { AreaDef, DecoDef, ItemKind, LevelDef, QuarterTurn, StationDef, TrashDef, Vec2 } from './types'
 
@@ -14,6 +16,8 @@ const LEGACY_LAYOUT = (() => {
 })()
 const BASE_LEVEL = LEGACY_LAYOUT ? LEVEL1_V1 : LEVEL1
 const EDITOR_KEY = LEGACY_LAYOUT ? 'minimart.editor.level.v1' : 'minimart.editor.level.v2'
+/** Map edited in the browser and shipped as the default layout. */
+const DEFAULT_LEVEL = applyLayout(BASE_LEVEL, (LEGACY_LAYOUT ? bakedLayoutV1 : bakedLayout) as unknown as LayoutFile)
 
 // purchase-wave palette, cycles for deeper waves
 export const TIER_COLORS = ['#4caf50', '#f4c430', '#ff8a3d', '#e53935', '#ab47bc', '#2f9de0']
@@ -77,9 +81,9 @@ export function applyLayout(base: LevelDef, layout: LayoutFile): LevelDef {
 function loadLevel() {
   try {
     const raw = localStorage.getItem(EDITOR_KEY)
-    return raw ? applyLayout(BASE_LEVEL, JSON.parse(raw) as LayoutFile) : cloneLevel(BASE_LEVEL)
+    return raw ? applyLayout(BASE_LEVEL, JSON.parse(raw) as LayoutFile) : cloneLevel(DEFAULT_LEVEL)
   } catch {
-    return cloneLevel(BASE_LEVEL)
+    return cloneLevel(DEFAULT_LEVEL)
   }
 }
 
@@ -203,7 +207,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
   reset: () => {
     const previous = get().level
-    const level = cloneLevel(BASE_LEVEL)
+    const level = cloneLevel(DEFAULT_LEVEL)
     persist(level)
     set((state) => ({ level, history: [...state.history.slice(-29), previous], selected: null }))
   },

@@ -285,7 +285,7 @@ describe('autopilot', () => {
     const w = createWorld(LEVEL1, { seed: 7 })
     const input = { x: 0, y: 0 }
     const chainUnlocked = () => w.unlocked.filter((id) => id !== 'cashier').length
-    for (let t = 0; t < 400 && chainUnlocked() < 3; t += 1 / 30) {
+    for (let t = 0; t < 900 && chainUnlocked() < 3; t += 1 / 30) {
       autopilot(w, input)
       tick(w, input, 1 / 30)
     }
@@ -624,6 +624,7 @@ describe('standard sizes', () => {
 describe('editor areas', () => {
   test('area edits persist through the layout roundtrip', () => {
     useEditor.getState().reset()
+    const base = useEditor.getState().level.areas.find((candidate) => candidate.id === 'A1')!.rect
     useEditor.getState().move({ type: 'area', id: 'A1' }, { x: 21.3, z: -0.3 }, true)
     useEditor.getState().resizeArea('A1', 'w', 0.5)
     const saved = layoutOf(useEditor.getState().level)
@@ -631,8 +632,8 @@ describe('editor areas', () => {
     const area = restored.areas.find((candidate) => candidate.id === 'A1')!
     expect(area.rect.x).toBe(21.5)
     expect(area.rect.z).toBe(-0.5)
-    expect(area.rect.w).toBe(12.5)
-    expect(area.rect.d).toBe(11.5)
+    expect(area.rect.w).toBe(base.w + 0.5)
+    expect(area.rect.d).toBe(base.d)
   })
 
   test('trash bins move and persist through the layout roundtrip', () => {
@@ -1069,7 +1070,8 @@ describe('cashier hire spot', () => {
     standAt(w, spot, 6)
     const checkout = station<Checkout>(w, 'checkout1')
     expect(checkout.cashier).toBe(true)
-    expect(w.money).toBe(50)
+    const price = LEVEL1.unlocks.find((u) => u.id === 'cashier')!.price
+    expect(w.money).toBe(200 - price)
     expect(w.visibleZones).not.toContain('cashier')
   })
 

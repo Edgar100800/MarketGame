@@ -1,5 +1,6 @@
 import type { Input } from '../types'
-import { dist, type World } from '../world'
+import { dist, inRect, unlockDef, type World } from '../world'
+import { PADS } from '../sizes'
 import { CAMERA_YAW } from './movement'
 import { objective } from './objective'
 
@@ -8,9 +9,15 @@ import { objective } from './objective'
  * and stands still on it. Writes screen-space input exactly like the joystick.
  */
 export function autopilot(w: World, input: Input) {
-  const target = objective(w).target
   input.x = 0
   input.y = 0
+  // inside a buy zone we can afford: hold still so the payment goes through
+  const paying = w.visibleZones.some((id) => {
+    const def = unlockDef(w, id)
+    return w.money + (w.zonePaid[id] ?? 0) >= def.price && inRect(w.player.pos, { x: def.zone.x, z: def.zone.z, w: PADS.buy.w, d: PADS.buy.d })
+  })
+  if (paying) return
+  const target = objective(w).target
   // stop radius a bit over half a buy zone: targets flush against walls jitter
   // between two grid paths and would otherwise never settle on 0.25
   if (!target || dist(w.player.pos, target) < 0.45) return
