@@ -24,6 +24,11 @@ export function pushItem(p: Player, kind: ItemKind): StackItem {
   return item
 }
 
+/** Keeps ids unique after a saved stack is restored in a fresh browser session. */
+export function reserveStackItemIds(items: StackItem[]) {
+  for (const item of items) nextId = Math.max(nextId, item.id + 1)
+}
+
 /** Removes the topmost item of `kind` (or the top item when kind is omitted). Returns its index, or -1. */
 export function removeItem(p: Player, kind?: ItemKind): number {
   let i = p.stack.length - 1

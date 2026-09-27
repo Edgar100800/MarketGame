@@ -2,7 +2,7 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useRef, type ReactNode } from 'react'
 import type { Group } from 'three'
-import { C, CUSTOMER_COLORS, WORKER_COLOR } from '../materials/palette'
+import { C, CASHIER_COLOR, CUSTOMER_COLORS, WORKER_COLOR } from '../materials/palette'
 import { Lighting } from './Lighting'
 import { Character } from '../models/Character'
 import { Chicken, Cow } from '../models/Animals'
@@ -36,10 +36,12 @@ const ENTRIES: Entry[] = [
     ),
   },
   { name: 'Customer', node: <><Character color="#E24FD0" hat="beanie" hatColor="#4AA8FF" /><Bubble text="Caja" position={[0, 2.1, 0]} /></> },
-  { name: 'Cashier', node: <Character color={WORKER_COLOR} hat="visor" hatColor={C.wallStripe} tie /> },
+  { name: 'Cashier', node: <Character color={CASHIER_COLOR} hat="visor" hatColor={C.wallStripe} tie /> },
+  { name: 'Shelver', node: <Character color={WORKER_COLOR} hat="cap" hatColor="#3D8BFF" vest="#3D8BFF" /> },
+  { name: 'Chef', node: <Character color={WORKER_COLOR} hat="chef" top={C.white} buttons={C.dark} /> },
   { name: 'Farmer', node: <Character color={WORKER_COLOR} hat="straw" hatColor={C.straw} /> },
   { name: 'Canasta 4 productos', node: <ShoppingBasket items={BASKET_ITEMS} />, scale: 1.8 },
-  { name: 'Cliente con canasta', node: <Character color={CUSTOMER_COLORS[2]} hat="cap" carry={<ShoppingBasket items={BASKET_ITEMS} />} />, scale: 1.15 },
+  { name: 'Cliente con canasta', node: <Character color={CUSTOMER_COLORS[2]} hat="bob" hatColor="#5C3A21" carry={<ShoppingBasket items={BASKET_ITEMS} />} />, scale: 1.15 },
   { name: 'Carrito vacío', node: <ShoppingCart items={[]} />, scale: 1.25 },
   { name: 'Carrito 8 productos', node: <ShoppingCart items={CART_ITEMS} />, scale: 1.25 },
   { name: 'Cliente con carrito', node: <Character color={CUSTOMER_COLORS[3]} hat="beanie" hatColor={C.wallStripe} walking push={<ShoppingCart items={CART_ITEMS} moving />} />, scale: 1.05 },

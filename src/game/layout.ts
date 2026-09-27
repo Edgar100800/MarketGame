@@ -1,3 +1,4 @@
+import { SLOT_SIZE, type SlotTier } from './sizes'
 import type { ShelfModel, Vec3 } from './types'
 
 // Where each item sits on a shelf or crate, shared by the logic (flying items aim at
@@ -5,25 +6,30 @@ import type { ShelfModel, Vec3 } from './types'
 
 export type SlotKind = 'tomato' | 'egg' | 'bread' | 'wheat' | 'can' | 'milk' | 'money' | 'tomatoCan' | 'flour' | 'cheese' | 'cake' | 'strawberry' | 'honey' | 'apple' | 'jam' | 'pizza'
 
-/** Footprint of one item, used as spacing in crates and legacy shelves. */
-export const SPACING: Record<SlotKind, number> = {
-  tomato: 0.34,
-  egg: 0.28,
-  bread: 0.4,
-  wheat: 0.34,
-  can: 0.24,
-  milk: 0.24,
-  money: 0.44,
-  tomatoCan: 0.26,
-  flour: 0.34,
-  cheese: 0.3,
-  cake: 0.38,
-  strawberry: 0.3,
-  honey: 0.32,
-  apple: 0.32,
-  jam: 0.32,
-  pizza: 0.44,
+/** Every product picks one of the three standard spacing tiers instead of a magic number. */
+const SLOT_TIER: Record<SlotKind, SlotTier> = {
+  tomato: 'M',
+  egg: 'S',
+  bread: 'L',
+  wheat: 'M',
+  can: 'S',
+  milk: 'S',
+  money: 'L',
+  tomatoCan: 'S',
+  flour: 'M',
+  cheese: 'M',
+  cake: 'L',
+  strawberry: 'M',
+  honey: 'M',
+  apple: 'M',
+  jam: 'M',
+  pizza: 'L',
 }
+
+/** Footprint of one item, used as spacing in crates and legacy shelves. */
+export const SPACING: Record<SlotKind, number> = Object.fromEntries(
+  (Object.keys(SLOT_TIER) as SlotKind[]).map((kind) => [kind, SLOT_SIZE[SLOT_TIER[kind]]]),
+) as Record<SlotKind, number>
 
 export const SHELF_WIDTH = 1.9
 /** Stepped shelf: each tier is higher and further back, so the camera sees every item. */

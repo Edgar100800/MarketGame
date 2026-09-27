@@ -39,6 +39,12 @@ export class Grid {
     return c >= 0 && r >= 0 && c < this.cols && r < this.rows && !this.blocked[r * this.cols + c]
   }
 
+  /** Nearest standable point to p: the center of the closest free cell (payment spots can sit on furniture). */
+  freePointNear(p: Vec2): Vec2 {
+    const [c, r] = this.nearestFree(...this.toCell(p))
+    return this.center(c, r)
+  }
+
   /** Nearest free cell to a point (targets can sit next to furniture). */
   private nearestFree(c: number, r: number): [number, number] {
     if (this.isFree(c, r)) return [c, r]

@@ -1,4 +1,5 @@
 import { BUY_INTERVAL, BUY_STEPS, MONEY_FIB_CAP, MONEY_INTERVAL, MONEY_INTERVAL_DECAY, MONEY_MIN_INTERVAL, TRANSFER_INTERVAL } from '../config'
+import { PADS } from '../sizes'
 import type { ItemKind, Vec2, Vec3 } from '../types'
 import { pushItem, removeItem, stackHas, stackKinds, stackRoom } from '../stack'
 import { activeTrash, applyUnlock, groundY, inRect, shelfSlotPos, stationPoint, trashZone, unlockDef, type World } from '../world'
@@ -115,7 +116,7 @@ export function interact(w: World, dt: number) {
   // pay into buy zones
   for (const id of w.visibleZones) {
     const def = unlockDef(w, id)
-    if (!inRect(p.pos, { x: def.zone.x, z: def.zone.z, w: 1.8, d: 1.8 })) continue
+    if (!inRect(p.pos, { x: def.zone.x, z: def.zone.z, w: PADS.buy.w, d: PADS.buy.d })) continue
     if (p.moving) continue // must stand still, like the original
     while (p.payTimer <= 0 && w.money > 0 && w.zonePaid[id] < def.price) {
       const step = Math.min(Math.ceil(def.price / BUY_STEPS), def.price - w.zonePaid[id], w.money)

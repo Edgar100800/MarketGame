@@ -39,14 +39,21 @@ export function Pill({ icon, text, ...props }: GroupProps & { icon?: ProductKind
   )
 }
 
-/** White thought bubble above a customer, showing what they want. */
-export function Bubble({ icon, text, ...props }: GroupProps & { icon?: ProductKind; text?: string }) {
+/** White thought bubble above a customer: current want + one dot per list item. */
+export function Bubble({ icon, text, dots, ...props }: GroupProps & { icon?: ProductKind; text?: string; dots?: { done: number; total: number } }) {
   return (
     <group {...props}>
       <SafeHtml center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <div className="bubble">
           {icon && <ProductIcon kind={icon} className="label-product-icon bubble-icon" />}
           {text && <span className="bubble-text">{text}</span>}
+          {dots && dots.total > 1 && (
+            <span className="bubble-dots">
+              {Array.from({ length: dots.total }, (_, i) => (
+                <i key={i} className={i < dots.done ? 'dot done' : i === dots.done ? 'dot now' : 'dot'} />
+              ))}
+            </span>
+          )}
         </div>
       </SafeHtml>
     </group>

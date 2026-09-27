@@ -69,3 +69,10 @@ export const CUSTOMER_COLORS = ['#E0574F', '#A8D857', '#F5D64A', '#5ED36B', '#F2
 
 // Employees are all pink, like the original game; roles differ by hat.
 export const WORKER_COLOR = '#E866D8'
+
+// The cashier wears a navy suit with a yellow necktie instead of the staff jumpsuit.
+export const CASHIER_COLOR = '#3D4A6B'
+
+// Random looks for incoming customers: hair colors for hair heads, vivid cloths for hats.
+export const HAIR_COLORS = ['#5C3A21', '#2B2B2B', '#E8C46B', '#C96A2E', '#E866D8']
+export const CLOTH_COLORS = ['#4AA8FF', '#E0574F', '#5ED36B', '#F5D64A', '#F0F0F0']

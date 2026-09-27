@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { C, WORKER_COLOR } from '../materials/palette'
+import { C, CASHIER_COLOR } from '../materials/palette'
 import { AppleTree, Beehive, CowPen, CropPlot, Nest, Planter, StrawberryPatch } from '../models/Farm'
 import { Checkout as CheckoutModel, Crate, Fridge, Shelf as ShelfModel } from '../models/Store'
 import { MachineStation } from '../models/Machines'
@@ -107,8 +107,8 @@ function Cashier({ x, y, z, turn }: { x: number; y: number; z: number; turn: Qua
     // (PopIn animates rotation.y and would reset it)
     <group position={[x, y, z]} rotation={[0, turnRadians(turn), 0]}>
       <PopIn bornAt={bornAt}>
-        {/* pink staff like everyone else: visor + bow tie set the cashier apart */}
-        <Character color={WORKER_COLOR} hat="visor" hatColor={C.wallStripe} tie />
+        {/* navy suit + bow tie: the cashier dresses apart from the pink staff */}
+        <Character color={CASHIER_COLOR} hat="visor" hatColor={C.wallStripe} tie />
       </PopIn>
     </group>
   )

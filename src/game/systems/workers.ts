@@ -95,14 +95,55 @@ function routeScore(w: World, r: Route, need: number, have: number, cap: number)
   return waitingCustomers(w, shelf) * 1000 + need * 10 * empty + Math.min(have, cap)
 }
 
+/** A task is one product need at one destination, regardless of which source supplies it. */
+function sameTask(a: Route, b: Route) {
+  return a.kind === b.kind && a.to === b.to && a.toSlot === b.toSlot
+}
+
+/** Active workers own their task until they finish or abandon it. */
+function taskClaimed(w: World, wk: Worker, route: Route) {
+  return w.workers.some(
+    (other) =>
+      other !== wk &&
+      !other.paused &&
+      other.state !== 'idle' &&
+      other.state !== 'toTrash' &&
+      other.route !== null &&
+      sameTask(other.route, route),
+  )
+}
+
+/** Stock another worker still plans to collect from this exact source. */
+function sourceReserved(w: World, wk: Worker, route: Route) {
+  let total = 0
+  for (const other of w.workers) {
+    if (
+      other === wk ||
+      other.paused ||
+      !other.route ||
+      (other.state !== 'toSource' && other.state !== 'loading' && other.state !== 'waiting') ||
+      other.route.kind !== route.kind ||
+      other.route.from !== route.from ||
+      other.route.fromSlot !== route.fromSlot
+    ) continue
+    const need = needOf(w, byId(w, other.route.to), other.route.toSlot, other.route.kind)
+    total += Math.max(0, Math.min(other.cap, need) - other.count)
+  }
+  return total
+}
+
+function availableFor(w: World, wk: Worker, route: Route) {
+  return Math.max(0, available(byId(w, route.from), route.fromSlot) - sourceReserved(w, wk, route))
+}
+
 function pickRoute(w: World, wk: Worker): Route | null {
   let best: Route | null = null
   let bestScore = 0
   for (const r of routesFor(w, wk.role)) {
     // a worker already holding items only takes routes that accept them
-    if (wk.carry && wk.carry !== r.kind) continue
+    if ((wk.carry && wk.carry !== r.kind) || taskClaimed(w, wk, r)) continue
     const need = needOf(w, byId(w, r.to), r.toSlot, r.kind)
-    const have = wk.carry ? wk.count : available(byId(w, r.from), r.fromSlot)
+    const have = wk.carry ? wk.count : availableFor(w, wk, r)
     if (need <= 0 || have <= 0) continue
     const score = routeScore(w, r, need, have, wk.cap)
     if (score > bestScore) {
@@ -118,7 +159,7 @@ function pickWaitRoute(w: World, wk: Worker): Route | null {
   let best: Route | null = null
   let bestScore = 0
   for (const r of routesFor(w, wk.role)) {
-    if (wk.carry && wk.carry !== r.kind) continue
+    if ((wk.carry && wk.carry !== r.kind) || taskClaimed(w, wk, r)) continue
     const need = needOf(w, byId(w, r.to), r.toSlot, r.kind)
     if (need <= 0) continue
     const score = routeScore(w, r, need, available(byId(w, r.from), r.fromSlot), wk.cap)

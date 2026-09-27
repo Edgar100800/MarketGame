@@ -25,9 +25,10 @@ export const MONEY_INTERVAL = 0.05
 export const MONEY_FIB_CAP = 9
 export const MONEY_INTERVAL_DECAY = 0.9
 export const MONEY_MIN_INTERVAL = 0.01
-export const BUY_INTERVAL = 0.04
-/** Buy zones are paid in this many steps. */
-export const BUY_STEPS = 25
+/** Seconds between payment steps when draining money into a buy zone. */
+export const BUY_INTERVAL = 0.12
+/** Buy zones are paid in up to this many steps (smaller prices take fewer, cheaper steps). */
+export const BUY_STEPS = 40
 export const PAY_TIME = 0.7
 export const CUSTOMER_TAKE_TIME = 0.35
 /** Seconds a customer waits at an empty shelf before paying what they have (or leaving). */

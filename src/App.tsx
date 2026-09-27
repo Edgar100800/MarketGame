@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { NoToneMapping, SRGBColorSpace } from 'three'
 import { ModelGallery } from './scenes/ModelGallery'
 import { TestLevel } from './scenes/TestLevel'
 import { Level1 } from './scenes/Level1'
 import { CharacterLab } from './scenes/CharacterLab'
+import { HatLab } from './scenes/HatLab'
 import { Hud, Joystick } from './components/Hud'
-import { useGame } from './game/state'
-import { reloadLevel } from './game/state'
+import { reloadLevel, saveNow, useGame } from './game/state'
 import { useEditor } from './game/editor'
 import { LevelEditorControls } from './components/LevelEditorControls'
 
@@ -30,6 +30,17 @@ export default function App() {
   const run = useGame((s) => s.run)
   const editing = useEditor((s) => s.enabled)
   const setEditing = useEditor((s) => s.setEnabled)
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') saveNow()
+    }
+    window.addEventListener('pagehide', saveNow)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('pagehide', saveNow)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
   const closeEditor = () => {
     setEditing(false)
     reloadLevel()
@@ -45,7 +56,7 @@ export default function App() {
         {view === 'play' && <Level1 editing={editing} />}
         {view === 'level' && <TestLevel />}
         {view === 'models' && <ModelGallery />}
-        {view === 'chars' && <CharacterLab />}
+        {view === 'chars' && (new URLSearchParams(location.search).has('hats') ? <HatLab /> : <CharacterLab />)}
       </Canvas>
       {view === 'play' && !editing && (
         <>

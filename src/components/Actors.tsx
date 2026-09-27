@@ -90,14 +90,15 @@ function CustomerView({ id }: { id: number }) {
       <group ref={body}>
         <Character
           color={CUSTOMER_COLORS[c.color]}
-          hat={c.color % 3 === 0 ? 'beanie' : c.color % 3 === 1 ? 'cap' : 'none'}
-          hatColor={c.color % 3 === 0 ? '#4AA8FF' : C.white}
+          hat={c.hat}
+          hatColor={c.hatColor}
           walking={c.moving}
           carry={carry}
           push={push}
         />
       </group>
-      {shopping && line && <Bubble icon={ICON[line.kind]} text={`${line.collected}/${line.requested} · ${c.lineIndex + 1}/${c.shopping.length}`} position={[0, 2.2, 0]} />}
+      {/* the bubble only shows the want they are chasing right now: icon + count + one dot per list item */}
+      {shopping && line && <Bubble icon={ICON[line.kind]} text={`${line.collected}/${line.requested}`} dots={{ done: c.lineIndex, total: c.shopping.length }} position={[0, 2.2, 0]} />}
       {queued && <Bubble text="Caja" position={[0, 2.2, 0]} />}
     </group>
   )
@@ -114,9 +115,9 @@ export function Customers() {
   )
 }
 
-const ROLE_LOOK: Record<WorkerRole, { hat: HatKind; hatColor: string }> = {
-  shelver: { hat: 'cap', hatColor: C.woodDark },
-  chef: { hat: 'chef', hatColor: C.white },
+const ROLE_LOOK: Record<WorkerRole, { hat: HatKind; hatColor: string; vest?: string; top?: string; buttons?: string }> = {
+  shelver: { hat: 'cap', hatColor: '#3D8BFF', vest: '#3D8BFF' },
+  chef: { hat: 'chef', hatColor: C.white, top: C.white, buttons: C.dark },
   farmer: { hat: 'straw', hatColor: C.straw },
 }
 
@@ -145,7 +146,7 @@ function WorkerView({ id }: { id: string }) {
       <PopIn bornAt={wk.bornAt}>
         <group ref={body}>
           <WorkerBody bounceKey={wk.count}>
-            <Character color={WORKER_COLOR} hat={look.hat} hatColor={look.hatColor} walking={wk.moving} carry={items.length > 0 && <CarryStack items={items} moving={wk.moving} />} />
+            <Character color={WORKER_COLOR} hat={look.hat} hatColor={look.hatColor} vest={look.vest} top={look.top} buttons={look.buttons} walking={wk.moving} carry={items.length > 0 && <CarryStack items={items} moving={wk.moving} />} />
           </WorkerBody>
         </group>
       </PopIn>

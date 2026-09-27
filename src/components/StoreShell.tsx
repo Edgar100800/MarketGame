@@ -9,7 +9,7 @@ import { Bush, Fence } from '../models/Farm'
 import { DecoView } from './DecoView'
 import { Pill, PriceTag } from '../models/Labels'
 import { onGameEvent, useGame, world } from '../game/state'
-import { activeTrash, trashZone, unlockDef } from '../game/world'
+import { activeDoors, activeTrash, trashZone, unlockDef } from '../game/world'
 import type { AreaDef } from '../game/types'
 import { PopIn } from './PopIn'
 import { floorY } from './StationView'
@@ -91,27 +91,58 @@ function EnclosedWalls({ area }: { area: AreaDef }) {
   const z1 = r.z + r.d / 2
   const door = area.door
   const gap: [number, number] | null = door ? [door.at - door.width / 2, door.at + door.width / 2] : null
-  // the east wall splits around the doorway; the north side is the shared back wall
-  const eastSegs: [number, number][] = gap ? [[z0, gap[0]], [gap[1], z1]] : [[z0, z1]]
+  // a side wall splits around the doorway when the door is on it; the north side is the shared back wall
+  const segs = (side: string, lo: number, hi: number): [number, number][] => (gap && door?.side === side ? [[lo, gap[0]], [gap[1], hi]] : [[lo, hi]])
+  // door dressing is drawn in a frame where the doorway runs along local z and "outside" is +x
+  const frame =
+    door?.side === 'south'
+      ? { position: [door.at, 0, z1] as const, rotation: [0, -Math.PI / 2, 0] as const }
+      : door?.side === 'west'
+        ? { position: [x0, 0, door.at] as const, rotation: [0, Math.PI, 0] as const }
+        : door
+          ? { position: [x1, 0, door.at] as const, rotation: [0, 0, 0] as const }
+          : null
   return (
     <>
-      <Wall length={r.d} position={[x0, 0, r.z]} rotation={[0, Math.PI / 2, 0]} />
-      <Wall length={r.w} position={[r.x, 0, z1]} rotation={[0, Math.PI, 0]} />
-      {eastSegs.map(([lo, hi], i) => (
-        <Wall key={i} length={hi - lo} position={[x1, 0, (lo + hi) / 2]} rotation={[0, Math.PI / 2, 0]} />
+      {segs('west', z0, z1).map(([lo, hi], i) => (
+        <Wall key={`w${i}`} length={hi - lo} position={[x0, 0, (lo + hi) / 2]} rotation={[0, Math.PI / 2, 0]} />
       ))}
-      {door && gap && (
-        <>
-          <Box size={[0.3, 0.4, door.width + 0.04]} color={C.wall} position={[x1, 2, door.at]} />
-          <group position={[x1, 0.9, gap[0]]} rotation={[0, -1.2, 0]}>
+      {segs('south', x0, x1).map(([lo, hi], i) => (
+        <Wall key={`s${i}`} length={hi - lo} position={[(lo + hi) / 2, 0, z1]} rotation={[0, Math.PI, 0]} />
+      ))}
+      {segs('east', z0, z1).map(([lo, hi], i) => (
+        <Wall key={`e${i}`} length={hi - lo} position={[x1, 0, (lo + hi) / 2]} rotation={[0, Math.PI / 2, 0]} />
+      ))}
+      {door && frame && (
+        <group position={[...frame.position]} rotation={[...frame.rotation]}>
+          <Box size={[0.3, 0.4, door.width + 0.04]} color={C.wall} position={[0, 2, 0]} />
+          <group position={[0, 0.9, -door.width / 2]} rotation={[0, -1.2, 0]}>
             <Box size={[0.06, 1.8, 0.66]} color={C.wood} position={[0, 0, 0.34]} />
           </group>
-          <FloorMat w={1.8} position={[x1 - 0.45, 0, door.at]} rotation={[0, Math.PI / 2, 0]} />
-          <FloorMat w={1.8} position={[x1 + 0.45, 0, door.at]} rotation={[0, Math.PI / 2, 0]} />
-          <Awning length={2} stripes={6} position={[x1 + 0.1, 2.1, door.at]} rotation={[0, Math.PI / 2, 0]} />
-        </>
+          <FloorMat w={1.8} position={[-0.45, 0, 0]} rotation={[0, Math.PI / 2, 0]} />
+          <FloorMat w={1.8} position={[0.45, 0, 0]} rotation={[0, Math.PI / 2, 0]} />
+          <Awning length={2} stripes={6} position={[0.1, 2.1, 0]} rotation={[0, Math.PI / 2, 0]} />
+        </group>
       )}
     </>
+  )
+}
+
+/** Customer entrance in the back wall: frame, sign board, slid-open glass doors and mats. */
+function StoreDoor({ x, width, z }: { x: number; width: number; z: number }) {
+  const h = 2.2
+  return (
+    <group position={[x, 0, z]}>
+      {/* posts and lintel */}
+      <Box size={[0.25, h, 0.4]} color={C.wallStripe} position={[-width / 2 - 0.12, h / 2, 0]} />
+      <Box size={[0.25, h, 0.4]} color={C.wallStripe} position={[width / 2 + 0.12, h / 2, 0]} />
+      <Box size={[width + 0.5, 0.45, 0.4]} color={C.wallStripe} position={[0, h - 0.1, 0]} />
+      {/* glass panels slid open behind the posts */}
+      <Box size={[width / 2, h - 0.5, 0.06]} color={C.glass} position={[-width / 2 - 0.1, (h - 0.5) / 2, -0.25]} />
+      <Box size={[width / 2, h - 0.5, 0.06]} color={C.glass} position={[width / 2 + 0.1, (h - 0.5) / 2, -0.25]} />
+      <Awning length={width + 0.4} stripes={6} position={[0, h + 0.05, 0.3]} />
+      <FloorMat w={width} position={[0, 0, 0.75]} />
+    </group>
   )
 }
 
@@ -124,11 +155,28 @@ function Walls() {
         const bornAt = world.areas.get(a.id)
         if (bornAt === undefined) return null
         const r = a.rect
+        const doors = (lv.doors ?? []).filter((d) => d.area === a.id).sort((p, q) => p.x - q.x)
+        // back wall pieces between doorways; windows only where they fit inside a piece
+        const pieces: [number, number][] = []
+        let lo = r.x - r.w / 2
+        for (const d of doors) {
+          pieces.push([lo, d.x - d.width / 2])
+          lo = d.x + d.width / 2
+        }
+        pieces.push([lo, r.x + r.w / 2])
         return (
           <RisingWall key={a.id} bornAt={bornAt}>
             <group position={[0, SLAB, 0]}>
-              <Wall length={r.w} position={[r.x, 0, lv.wallZ - 0.15]} windows={[[-r.w / 4, 2.4], [r.w / 4, 2.4]]} />
-              {!a.enclose && <FloorMat position={[r.x - r.w / 4, 0, lv.wallZ + 0.6]} w={2.6} />}
+              {pieces
+                .filter(([p0, p1]) => p1 - p0 > 0.05)
+                .map(([p0, p1]) => {
+                  const len = p1 - p0
+                  const windows: [number, number][] = len >= 7 ? [[-len / 4, 2.4], [len / 4, 2.4]] : len >= 3.5 ? [[0, Math.min(2.4, len - 1.2)]] : []
+                  return <Wall key={p0} length={len} position={[(p0 + p1) / 2, 0, lv.wallZ - 0.15]} windows={windows} />
+                })}
+              {doors.map((d) => (
+                <StoreDoor key={d.id} x={d.x} width={d.width} z={lv.wallZ - 0.15} />
+              ))}
               {a.enclose && <EnclosedWalls area={a} />}
             </group>
           </RisingWall>
@@ -219,7 +267,7 @@ function TrashBins() {
   )
 }
 
-export function StoreShell() {
+export function StoreShell({ editing = false }: { editing?: boolean }) {
   useGame((s) => s.version)
   return (
     <>
@@ -233,19 +281,19 @@ export function StoreShell() {
       })}
       <LockedAreas />
       <Walls />
-      <TrashBins />
+      {/* in the editor these render live inside EditorScene; here they would leave frozen ghosts */}
+      {!editing && <TrashBins />}
       {/* farm decoration */}
       {/* L-shaped fence around the hen yard's back corner */}
-      <Fence length={4} position={[-14.5, 0, 14.3]} rotation={[0, Math.PI / 2, 0]} />
-      <Fence length={4} position={[-12.5, 0, 16.3]} />
-      <Bush position={[-20.5, 0, -4.5]} />
-      <Bush position={[15, 0, 7]} scale={0.8} />
-      <Bush position={[13.5, 0, 16]} scale={0.9} />
+      <Fence length={4} position={[-12.5, 0, 11.5]} rotation={[0, Math.PI / 2, 0]} />
+      <Fence length={4} position={[-10.5, 0, 13.5]} />
+      <Bush position={[-17, 0, -4.5]} />
+      <Bush position={[17.5, 0, 6.5]} scale={0.8} />
+      <Bush position={[9, 0, 12]} scale={0.9} />
       {/* movable decorations from the level (editor can rearrange them) */}
-      {(world.level.deco ?? []).map((piece) => (
-        <DecoView key={piece.id} def={piece} />
-      ))}
+      {!editing && (world.level.deco ?? []).map((piece) => <DecoView key={piece.id} def={piece} />)}
       <OfficeSign />
+      <DoorSigns />
     </>
   )
 }
@@ -254,5 +302,21 @@ export function StoreShell() {
 function OfficeSign() {
   const area = world.level.areas.find((a) => a.enclose && a.door)
   if (!area?.door) return null
-  return <Pill text="PERSONAL" position={[area.rect.x + area.rect.w / 2 + 0.15, 2.55, area.door.at]} />
+  const r = area.rect
+  const d = area.door
+  const pos: [number, number, number] =
+    d.side === 'south' ? [d.at, 2.55, r.z + r.d / 2 + 0.15] : d.side === 'west' ? [r.x - r.w / 2 - 0.15, 2.55, d.at] : [r.x + r.w / 2 + 0.15, 2.55, d.at]
+  return <Pill text="PERSONAL" position={pos} />
+}
+
+/** "ENTRADA" sign over each open customer door. */
+function DoorSigns() {
+  useGame((s) => s.version)
+  return (
+    <>
+      {activeDoors(world).map((d) => (
+        <Pill key={d.id} text="ENTRADA" position={[d.x, 2.9, world.level.wallZ]} />
+      ))}
+    </>
+  )
 }

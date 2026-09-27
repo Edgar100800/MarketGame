@@ -4,7 +4,8 @@ import { editedLevel } from './editor'
 import { objective } from './systems/objective'
 import { autopilot } from './systems/autopilot'
 import { tick } from './loop'
-import type { GameEvent, Input, Objective } from './types'
+import { restoreWorld, snapshotWorld, type RuntimeSnapshot } from './save'
+import type { GameEvent, Input, LevelDef, Objective } from './types'
 
 // Bridge between the pure simulation and React.
 // - `world` is mutated every frame by the loop (read it directly inside useFrame).
@@ -14,12 +15,14 @@ import type { GameEvent, Input, Objective } from './types'
 const SAVE_KEY = 'minimart.level1'
 
 interface Save {
+  version?: 2
   money: number
   earned: number
   unlocked: string[]
   units?: Record<string, number>
   upgrades?: Record<string, number>
   paused?: string[]
+  runtime?: RuntimeSnapshot
 }
 
 function params() {
@@ -47,15 +50,17 @@ export function clearSave() {
   }
 }
 
-function writeSave(w: World) {
+function writeSave(w: World, includeRuntime = true) {
   try {
     const s: Save = {
+      version: 2,
       money: w.money,
       earned: w.earned,
       unlocked: w.unlocked,
       units: w.units,
       upgrades: w.upgrades,
       paused: w.workers.filter((x) => x.paused).map((x) => x.id),
+      ...(includeRuntime ? { runtime: snapshotWorld(w) } : {}),
     }
     localStorage.setItem(SAVE_KEY, JSON.stringify(s))
   } catch {
@@ -63,22 +68,11 @@ function writeSave(w: World) {
   }
 }
 
-/** Inserts mandatory stations added to the progression after a save was created. */
-function migrateUnlocks(unlocked: string[] | undefined) {
+/** Drops unlock ids the level no longer has (e.g. milkFridge, merged into cow) so old saves still load. */
+export function migrateUnlocks(unlocked: string[] | undefined, level: LevelDef) {
   if (!unlocked) return undefined
-  const out: string[] = []
-  const add = (id: string) => {
-    if (!out.includes(id)) out.push(id)
-  }
-  for (const id of unlocked) {
-    if (id === 'bakery' || id === 'chef' || id === 'branch') {
-      add('cow')
-      add('milkFridge')
-      add('checkout2')
-    }
-    add(id)
-  }
-  return out
+  const known = new Set(level.unlocks.map((unlock) => unlock.id))
+  return [...new Set(unlocked.filter((id) => known.has(id)))]
 }
 
 /** Debug flags: ?money=999 ?fast=5 ?unlock=all|id1,id2 ?reset=1 ?autoplay=1 ?sim=300 (pre-simulate N seconds with the bot) ?upgrades (open the panel) */
@@ -97,17 +91,20 @@ export const debug = (() => {
   }
 })()
 
-function makeWorld(): World {
+function makeWorld(restoreRuntime = true): World {
   if (debug.reset) clearSave()
   const save = debug.reset ? null : loadSave()
-  const w = createWorld(editedLevel(), {
+  const level = editedLevel()
+  const w = createWorld(level, {
     money: debug.money ?? save?.money ?? 0,
     earned: save?.earned ?? 0,
-    unlocked: debug.unlockList ?? migrateUnlocks(save?.unlocked),
+    unlocked: debug.unlockList ?? migrateUnlocks(save?.unlocked, level),
     units: save?.units,
     upgrades: save?.upgrades,
     paused: save?.paused,
   })
+  const debugOverridesProgress = debug.money !== undefined || debug.unlockAll || debug.unlockList !== null
+  if (restoreRuntime && !debugOverridesProgress) restoreWorld(w, save?.runtime)
   if (debug.unlockAll) unlockAll(w)
   if (debug.sim) {
     const bot = { x: 0, y: 0 }
@@ -151,9 +148,15 @@ export function restart() {
 
 /** Rebuilds the simulation after leaving the level editor without deleting progress. */
 export function reloadLevel() {
-  writeSave(world)
-  world = makeWorld()
+  // The editor may move walls and stations, invalidating saved paths and positions.
+  writeSave(world, false)
+  world = makeWorld(false)
   useGame.setState((s) => ({ run: s.run + 1, money: world.money, version: world.version, completed: world.completed, objective: objective(world), sigs: {} }))
+}
+
+/** Flushes the latest runtime snapshot when the browser hides or closes the page. */
+export function saveNow() {
+  writeSave(world)
 }
 
 function signatures(w: World): Record<string, string> {

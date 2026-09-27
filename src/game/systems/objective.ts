@@ -18,9 +18,31 @@ export function objective(w: World): Objective {
   // customers waiting to pay come first (sticky: stays until the queue is empty)
   const unattended = checkouts.filter((checkout) => !checkout.cashier && checkout.queue.length > 0).sort((a, b) => b.queue.length - a.queue.length)[0]
   if (unattended) return { text: 'Atiende la caja', target: unattended.spot }
+
+  const visible = w.visibleZones.map((id) => unlockDef(w, id))
+  const canAfford = (u: (typeof visible)[number]) => w.money + (w.zonePaid[u.id] ?? 0) >= u.price
+
+  // a purchase the player is committed to beats the checkout run — money is
+  // safe on the counter, but the walk to the zone is wasted if we yank away.
+  // Stays only while the wallet can still close the deal.
+  const sticky = w.stickyBuy ? visible.find((u) => u.id === w.stickyBuy) : undefined
+  if (sticky && canAfford(sticky)) return { text: `Desbloquea: ${sticky.label}`, target: w.grid.freePointNear(sticky.zone) }
+  w.stickyBuy = null
+
   // with a cashier the money still piles up on the counter: collect it once there's a good amount
   const money = checkouts.filter((checkout) => checkout.cash > 0 && (!checkout.cashier || checkout.cash >= 30)).sort((a, b) => b.cash - a.cash)[0]
   if (money) return { text: 'Recoge el dinero', target: money.spot }
+
+  // buy zone the player can afford: progression beats routine factory work.
+  // The final branch waits: buying it completes the level, so every other
+  // progression unlock goes first.
+  const finalId = w.level.finalUnlock
+  const progression = visible.filter((u) => !u.units && u.id !== finalId)
+  const affordable = progression.find(canAfford) ?? visible.find((u) => !u.units && canAfford(u)) ?? visible.find(canAfford)
+  if (affordable) {
+    w.stickyBuy = affordable.id
+    return { text: `Desbloquea: ${affordable.label}`, target: w.grid.freePointNear(affordable.zone) }
+  }
 
   // stay on the current zone while items can still move (don't leave a job half done)
   const room = stackRoom(p) > 0
@@ -60,13 +82,6 @@ export function objective(w: World): Objective {
     const bin = activeTrash(w).map(trashZone).sort((a, b) => Math.hypot(a.x - p.pos.x, a.z - p.pos.z) - Math.hypot(b.x - p.pos.x, b.z - p.pos.z))[0]
     return { text: 'Estante lleno: tira el resto al tacho', target: at(bin) }
   }
-
-  // buy zone the player can afford: progression beats routine factory work
-  const visible = w.visibleZones.map((id) => unlockDef(w, id))
-  const canAfford = (u: (typeof visible)[number]) => w.money + (w.zonePaid[u.id] ?? 0) >= u.price
-  // Progression unlocks beat optional repeat purchases such as extra crop tiles.
-  const affordable = visible.find((u) => !u.units && canAfford(u)) ?? visible.find(canAfford)
-  if (affordable) return { text: `Desbloquea: ${affordable.label}`, target: affordable.zone }
 
   // machine output ready
   for (const s of w.stations)

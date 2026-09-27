@@ -393,6 +393,28 @@ body,
   height: 22px;
 }
 
+/* one dot per shopping-list item: green done, white current, gray pending */
+.bubble-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 2px;
+}
+
+.bubble-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c9c9c9;
+}
+
+.bubble-dots .dot.done {
+  background: #86db55;
+}
+
+.bubble-dots .dot.now {
+  background: var(--ink);
+}
+
 .price {
   display: flex;
   white-space: nowrap;
@@ -512,6 +534,10 @@ body,
   text-shadow: 0 2px 0 var(--ink);
   animation: hud-money-float 1.1s ease-out forwards;
   pointer-events: none;
+}
+
+.hud-money-float.loss {
+  color: #ff6b5e;
 }
 
 @keyframes hud-money-float {

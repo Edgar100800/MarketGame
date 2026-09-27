@@ -1,15 +1,19 @@
 import { describe, expect, test } from 'bun:test'
 import { LEVEL1 } from './level1'
-import { applyUnlock, buildStation, colliders, createWorld, dist, shelfSlotPos, trashZone, unlockAll, type World } from './world'
+import { activeDoors, applyUnlock, buildStation, colliders, createWorld, dist, shelfSlotPos, trashZone, unlockAll, type World } from './world'
 import { tick } from './loop'
 import { runMachines } from './systems/production'
 import { customerCarryMode, spawnCustomer } from './systems/customers'
 import { autopilot } from './systems/autopilot'
-import { fridgeSlots, shelfSlots } from './layout'
-import { setStack } from './stack'
+import { objective } from './systems/objective'
+import { fridgeSlots, shelfSlots, SPACING, type SlotKind } from './layout'
+import { pushItem, setStack } from './stack'
+import { restoreWorld, snapshotWorld } from './save'
 import { buyUpgrade } from './upgrades'
 import { applyLayout, layoutOf, stationRelations, unlockTiers, useEditor, type LayoutFile } from './editor'
+import { PADS, SLOT_SIZE } from './sizes'
 import { PRICE } from './config'
+import { migrateUnlocks } from './state'
 import type { Checkout, Machine, Producer, Shelf, Vec2 } from './types'
 
 const idle = { x: 0, y: 0 }
@@ -148,7 +152,7 @@ describe('customers', () => {
 })
 
 describe('second checkout', () => {
-  const checkoutUnlocks = ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'milkFridge', 'checkout2']
+  const checkoutUnlocks = ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'checkout2']
 
   test('is mandatory after milk and reveals bakery plus its optional cashier', () => {
     const w = createWorld(LEVEL1, { seed: 1, unlocked: checkoutUnlocks })
@@ -182,7 +186,7 @@ describe('unlocks', () => {
   test('paying a buy zone drains money and reveals the next one', () => {
     const w = createWorld(LEVEL1, { seed: 1, money: 100 })
     w.spawnTimer = 999
-    standAt(w, LEVEL1.unlocks[0].zone, 2)
+    standAt(w, LEVEL1.unlocks[0].zone, 4)
     expect(w.unlocked).toContain('planter2')
     expect(w.money).toBe(80) // both plants bought at $10 each
     expect(w.units.planter2).toBe(2)
@@ -364,7 +368,7 @@ describe('milk production', () => {
   })
 
   test('milk can be collected and placed into the fridge', () => {
-    const w = createWorld(LEVEL1, { seed: 1, unlocked: [...milkUnlocks, 'milkFridge'] })
+    const w = createWorld(LEVEL1, { seed: 1, unlocked: [...milkUnlocks] })
     w.spawnTimer = 999
     const cow = station<Producer>(w, 'cow1')
     const fridge = station<Shelf>(w, 'shelfMilk')
@@ -377,7 +381,7 @@ describe('milk production', () => {
   })
 
   test('customers buy milk at its configured price', () => {
-    const w = createWorld(LEVEL1, { seed: 3, unlocked: [...milkUnlocks, 'milkFridge', 'cashier'] })
+    const w = createWorld(LEVEL1, { seed: 3, unlocked: [...milkUnlocks, 'cashier'] })
     w.spawnTimer = 999
     const fridge = station<Shelf>(w, 'shelfMilk')
     fridge.stock = 3
@@ -422,7 +426,7 @@ describe('dairy premium', () => {
   })
 
   test('customers buy cheese at its configured price', () => {
-    const w = createWorld(LEVEL1, { seed: 3, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'milkFridge', 'cheesePress', 'cashier'] })
+    const w = createWorld(LEVEL1, { seed: 3, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'cheesePress', 'cashier'] })
     w.spawnTimer = 999
     const shelf = station<Shelf>(w, 'shelfCheese')
     shelf.stock = 2
@@ -435,6 +439,17 @@ describe('dairy premium', () => {
 })
 
 describe('farm pack', () => {
+  test('crop producers share the standard pad size', () => {
+    const w = createWorld(LEVEL1, { unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'strawberry', 'beehive', 'appleTree'] })
+    const sizes = ['planter1', 'patch1', 'tree1'].map((id) => {
+      const pad = station<Producer>(w, id).pad
+      return { w: Math.round(pad.w * 10), d: Math.round(pad.d * 10) }
+    })
+    expect(sizes[0]).toEqual({ w: 34, d: 30 })
+    expect(sizes[1]).toEqual(sizes[0])
+    expect(sizes[2]).toEqual(sizes[0])
+  })
+
   test('the beehive makes honey on its own, no feed needed', () => {
     const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'strawberry', 'beehive'] })
     w.spawnTimer = 999
@@ -474,7 +489,7 @@ describe('farm pack', () => {
 })
 
 describe('cafeteria annex', () => {
-  const annexUnlocks = ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'milkFridge', 'cheesePress', 'areaA2', 'mixer', 'pizzaOven', 'cashier']
+  const annexUnlocks = ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'cheesePress', 'areaA2', 'mixer', 'pizzaOven', 'cashier']
 
   test('pizzaOven needs flour, tomato and cheese together', () => {
     const w = createWorld(LEVEL1, { seed: 1 })
@@ -514,7 +529,7 @@ describe('cafeteria annex', () => {
   })
 
   test('the annex chain hides mixer and pizzaOven until the annex is bought', () => {
-    const w = createWorld(LEVEL1, { unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'milkFridge', 'cheesePress'] })
+    const w = createWorld(LEVEL1, { unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'cheesePress'] })
     expect(w.visibleZones).not.toContain('mixer')
     expect(w.visibleZones).not.toContain('pizzaOven')
     applyUnlock(w, 'areaA2')
@@ -542,6 +557,36 @@ describe('editor tiers', () => {
   })
 })
 
+describe('standard sizes', () => {
+  test('every station family builds with its standard pad', () => {
+    const w = createWorld(LEVEL1, { unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'cheesePress', 'strawberry', 'beehive', 'appleTree'] })
+    const padOf = (id: string) => {
+      const { w: pw, d } = station<Producer>(w, id).pad
+      return `${Math.round(pw * 10)}x${Math.round(d * 10)}`
+    }
+    expect(padOf('planter1')).toBe(`${Math.round(PADS.crop.w * 10)}x${Math.round(PADS.crop.d * 10)}`)
+    expect(padOf('patch1')).toBe(padOf('planter1'))
+    expect(padOf('tree1')).toBe(padOf('planter1'))
+    expect(padOf('nest1')).toBe(`${Math.round(PADS.coop.w * 10)}x${Math.round(PADS.coop.d * 10)}`)
+    expect(padOf('cow1')).toBe(`${Math.round(PADS.barn.w * 10)}x${Math.round(PADS.barn.d * 10)}`)
+    expect(padOf('plot1')).toBe(padOf('cow1'))
+    const shelfPad = station<Shelf>(w, 'shelfTomato').pad
+    const cratePad = station<Shelf>(w, 'shelfHoney').pad
+    const fridgePad = station<Shelf>(w, 'shelfMilk').pad
+    for (const pad of [cratePad, fridgePad]) {
+      expect(Math.round(pad.w * 10)).toBe(Math.round(PADS.shelf.w * 10))
+      expect(Math.round(pad.d * 10)).toBe(Math.round(PADS.shelf.d * 10))
+    }
+    expect(station<Machine>(w, 'canner').pad.w).toBe(PADS.machine.w)
+    expect(station<Checkout>(w, 'checkout1').pad.w).toBe(PADS.checkout.w)
+  })
+
+  test('product spacing only uses the three standard tiers', () => {
+    const tiers = Object.values(SLOT_SIZE)
+    for (const kind of Object.keys(SPACING) as SlotKind[]) expect(tiers).toContain(SPACING[kind])
+  })
+})
+
 describe('editor areas', () => {
   test('area edits persist through the layout roundtrip', () => {
     useEditor.getState().reset()
@@ -552,8 +597,8 @@ describe('editor areas', () => {
     const area = restored.areas.find((candidate) => candidate.id === 'A1')!
     expect(area.rect.x).toBe(21.5)
     expect(area.rect.z).toBe(-0.5)
-    expect(area.rect.w).toBe(14.5)
-    expect(area.rect.d).toBe(16)
+    expect(area.rect.w).toBe(12.5)
+    expect(area.rect.d).toBe(11.5)
   })
 
   test('trash bins move and persist through the layout roundtrip', () => {
@@ -609,6 +654,76 @@ describe('editor relations', () => {
   })
 })
 
+describe('save snapshots', () => {
+  const unlocks = ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'shelver']
+
+  test('restores the live situation and therefore the same guide arrow', () => {
+    const w = createWorld(LEVEL1, { seed: 3, money: 47, unlocked: unlocks })
+    w.spawnTimer = 8.5
+    w.player.pos = { x: -4.2, z: -2.1 }
+    w.player.facing = 0.7
+    setStack(w.player, 'tomato', 2)
+
+    const planter = station<Producer>(w, 'planter1')
+    planter.stock = 1
+    planter.timer = 1.25
+    const shelf = station<Shelf>(w, 'shelfTomato')
+    shelf.stock = 4
+    const canner = station<Machine>(w, 'canner')
+    canner.input.tomato = 2
+    canner.output = 1
+    canner.running = true
+    canner.progress = 0.45
+
+    const customer = spawnCustomer(w, 'shelfTomato')!
+    customer.state = 'inQueue'
+    customer.path = []
+    customer.checkoutId = 'checkout1'
+    const checkout = station<Checkout>(w, 'checkout1')
+    checkout.queue = [customer.id]
+    checkout.payTimer = 0.6
+
+    const worker = w.workers.find((candidate) => candidate.id === 'farmer')!
+    worker.pos = { x: -7, z: 5 }
+    worker.path = [{ x: -8, z: 6 }]
+    worker.route = { kind: 'tomato', from: 'planter1', fromSlot: 'stock', to: 'nest1', toSlot: 'feed' }
+    worker.state = 'toSource'
+    const zone = w.visibleZones[0]
+    w.zonePaid[zone] = 17
+
+    const guideBefore = objective(w)
+    const saved = JSON.parse(JSON.stringify(snapshotWorld(w)))
+    const restored = createWorld(LEVEL1, { seed: 3, money: w.money, unlocked: unlocks })
+    expect(restoreWorld(restored, saved)).toBe(true)
+
+    expect(restored.player).toEqual(w.player)
+    expect(station<Producer>(restored, 'planter1').stock).toBe(1)
+    expect(station<Producer>(restored, 'planter1').timer).toBe(1.25)
+    expect(station<Shelf>(restored, 'shelfTomato').stock).toBe(4)
+    expect(station<Machine>(restored, 'canner').progress).toBe(0.45)
+    expect(station<Checkout>(restored, 'checkout1').queue).toEqual([customer.id])
+    expect(restored.customers).toEqual(w.customers)
+    expect(restored.workers.find((candidate) => candidate.id === 'farmer')?.route).toEqual(worker.route)
+    expect(restored.zonePaid[zone]).toBe(17)
+    expect(objective(restored)).toEqual(guideBefore)
+  })
+
+  test('continues item ids after restore and safely ignores old saves without a runtime snapshot', () => {
+    const w = createWorld(LEVEL1, { seed: 4 })
+    setStack(w.player, 'tomato', 2)
+    const saved = snapshotWorld(w)
+    const maxSavedId = Math.max(...w.player.stack.map((item) => item.id))
+    const restored = createWorld(LEVEL1, { seed: 4 })
+    expect(restoreWorld(restored, saved)).toBe(true)
+    expect(pushItem(restored.player, 'egg').id).toBeGreaterThan(maxSavedId)
+
+    const legacy = createWorld(LEVEL1, { seed: 5 })
+    const before = objective(legacy)
+    expect(restoreWorld(legacy, { money: 10, unlocked: [] })).toBe(false)
+    expect(objective(legacy)).toEqual(before)
+  })
+})
+
 describe('workers', () => {
   test('farmer carries tomatoes from the planter to the hungry hen', () => {
     const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer'] })
@@ -629,7 +744,7 @@ describe('workers', () => {
   })
 
   test('shelver carries milk from the cow to a waiting customer', () => {
-    const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'shelver', 'wheat', 'cow', 'milkFridge'] })
+    const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'shelver', 'wheat', 'cow'] })
     w.spawnTimer = 999
     w.workers.find((worker) => worker.id === 'farmer')!.paused = true
     const cow = station<Producer>(w, 'cow1')
@@ -673,7 +788,7 @@ describe('workers', () => {
   })
 
   test('an empty shelf jumps the queue: it gets covered before a partly filled one', () => {
-    const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'shelver', 'wheat', 'cow', 'milkFridge'] })
+    const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'shelver', 'wheat', 'cow'] })
     w.spawnTimer = 999
     w.workers.find((x) => x.id === 'farmer')!.paused = true
     const shelfCan = station<Shelf>(w, 'shelfCan')
@@ -716,7 +831,7 @@ describe('workers', () => {
   })
 
   test('a worker camps at a dry source and loads once items appear', () => {
-    const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'shelver', 'wheat', 'cow', 'milkFridge', 'checkout2', 'bakery', 'chef'] })
+    const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'shelver', 'wheat', 'cow', 'checkout2', 'bakery', 'chef'] })
     w.spawnTimer = 999
     for (const id of ['farmer', 'shelver']) w.workers.find((x) => x.id === id)!.paused = true
     const chef = w.workers.find((x) => x.id === 'chef')!
@@ -751,6 +866,30 @@ describe('workers', () => {
       if ((canner.input.tomato ?? 0) > 0) fed = true
     }
     expect(fed).toBe(true)
+  })
+
+  test('two chefs claim different kitchen tasks', () => {
+    const w = createWorld(LEVEL1, { seed: 1 })
+    unlockAll(w)
+    w.spawnTimer = 999
+    for (const worker of w.workers) if (worker.role !== 'chef') worker.paused = true
+    for (let t = 0; t < 1; t += 1 / 30) tick(w, idle, 1 / 30)
+    const chefs = w.workers.filter((worker) => worker.role === 'chef')
+    expect(chefs).toHaveLength(3)
+    expect(chefs.every((worker) => worker.route !== null)).toBe(true)
+    expect(new Set(chefs.map((worker) => `${worker.route!.kind}:${worker.route!.to}:${worker.route!.toSlot}`)).size).toBe(3)
+  })
+
+  test('two shelvers claim different delivery tasks', () => {
+    const w = createWorld(LEVEL1, { seed: 1 })
+    unlockAll(w)
+    w.spawnTimer = 999
+    for (const worker of w.workers) if (worker.role !== 'shelver') worker.paused = true
+    for (let t = 0; t < 1; t += 1 / 30) tick(w, idle, 1 / 30)
+    const shelvers = w.workers.filter((worker) => worker.role === 'shelver')
+    expect(shelvers).toHaveLength(3)
+    expect(shelvers.every((worker) => worker.route !== null)).toBe(true)
+    expect(new Set(shelvers.map((worker) => `${worker.route!.kind}:${worker.route!.to}:${worker.route!.toSlot}`)).size).toBe(3)
   })
 })
 
@@ -798,7 +937,7 @@ describe('cashier hire spot', () => {
     w.spawnTimer = 999
     expect(w.areas.has('A3')).toBe(true) // the office is built from the start
     const spot = LEVEL1.unlocks.find((u) => u.id === 'farmer')!.zone
-    standAt(w, spot, 4)
+    standAt(w, spot, 6)
     expect(w.unlocked).toContain('farmer')
     expect(w.workers.some((worker) => worker.id === 'farmer')).toBe(true)
     expect(w.money).toBe(110)
@@ -807,34 +946,65 @@ describe('cashier hire spot', () => {
   test('all staff hire zones line up inside the office floor', () => {
     const inOffice = (id: string) => {
       const z = LEVEL1.unlocks.find((u) => u.id === id)!.zone
-      return z.x >= -18.7 && z.x <= -12.3 && z.z >= -10.2 && z.z <= -1.8
+      return z.x >= -15.7 && z.x <= -10.3 && z.z >= -6.7 && z.z <= 0.2
     }
-    for (const id of ['farmer', 'shelver', 'chef', 'farmer2', 'shelver2', 'chef2']) expect(inOffice(id)).toBe(true)
+    for (const id of ['farmer', 'shelver', 'chef', 'farmer2', 'shelver2', 'chef2', 'farmer3', 'shelver3', 'chef3']) expect(inOffice(id)).toBe(true)
   })
 
-  test('the six hire boxes sit 1.8 apart so their pads never overlap', () => {
+  test('simultaneous hire boxes stay apart and each third hire replaces its second hire pad', () => {
     const spots = ['farmer', 'shelver', 'chef', 'farmer2', 'shelver2', 'chef2'].map((id) => LEVEL1.unlocks.find((u) => u.id === id)!.zone)
     for (let i = 0; i < spots.length; i++)
       for (let j = i + 1; j < spots.length; j++) expect(Math.hypot(spots[i].x - spots[j].x, spots[i].z - spots[j].z)).toBeGreaterThanOrEqual(1.79)
+    for (const role of ['farmer', 'shelver', 'chef']) {
+      const second = LEVEL1.unlocks.find((unlock) => unlock.id === `${role}2`)!.zone
+      const third = LEVEL1.unlocks.find((unlock) => unlock.id === `${role}3`)!.zone
+      expect(third).toEqual(second)
+    }
   })
 
-  test('the office is enclosed with walls and the door opens to the store', () => {
+  test('hiring a second worker reveals the third at double the regular price', () => {
+    const w = createWorld(LEVEL1, { seed: 1, money: 1500, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'areaA2'] })
+    expect(w.visibleZones).not.toContain('farmer3')
+    expect(w.visibleZones).not.toContain('shelver3')
+    expect(w.visibleZones).not.toContain('chef3')
+    applyUnlock(w, 'farmer2', false)
+    applyUnlock(w, 'shelver2', false)
+    applyUnlock(w, 'chef2', false)
+    expect(w.visibleZones).toEqual(expect.arrayContaining(['farmer3', 'shelver3', 'chef3']))
+    expect(LEVEL1.unlocks.find((u) => u.id === 'farmer3')!.price).toBe(2 * LEVEL1.unlocks.find((u) => u.id === 'farmer')!.price)
+    expect(LEVEL1.unlocks.find((u) => u.id === 'shelver3')!.price).toBe(2 * LEVEL1.unlocks.find((u) => u.id === 'shelver')!.price)
+    expect(LEVEL1.unlocks.find((u) => u.id === 'chef3')!.price).toBe(2 * LEVEL1.unlocks.find((u) => u.id === 'chef')!.price)
+  })
+
+  test('paying at the reused second-hire pads hires the third farmer, shelver and chef', () => {
+    const w = createWorld(LEVEL1, { seed: 1, money: 2500, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'cheesePress', 'areaA2', 'farmer2', 'shelver2', 'chef2'] })
+    w.spawnTimer = 999
+    const spot = (id: string) => LEVEL1.unlocks.find((u) => u.id === id)!.zone
+    standAt(w, spot('farmer3'), 8)
+    standAt(w, spot('shelver3'), 12)
+    standAt(w, spot('chef3'), 22)
+    expect(w.workers.find((x) => x.id === 'farmer3')!.role).toBe('farmer')
+    expect(w.workers.find((x) => x.id === 'shelver3')!.role).toBe('shelver')
+    expect(w.workers.find((x) => x.id === 'chef3')!.role).toBe('chef')
+    expect(w.visibleZones).not.toContain('chef3')
+  })
+
+  test('the office is enclosed with walls and its door opens to the farm', () => {
     const w = createWorld(LEVEL1, { seed: 1 })
     const walls = colliders(w)
-    expect(walls.some((r) => r.x === -19 && r.z === -6 && r.w === 0.5)).toBe(true) // west wall
-    expect(walls.some((r) => r.x === -15.5 && r.z === -1.5)).toBe(true) // south wall
-    expect(walls.some((r) => r.x === -12 && Math.abs(r.z + 9) < 0.01)).toBe(true) // east wall, back segment
-    expect(walls.some((r) => r.x === -12 && Math.abs(r.z + 3.5) < 0.01)).toBe(true) // east wall, front segment
-    // the doorway itself stays free
-    expect(walls.some((r) => Math.abs(r.x + 12) < 0.26 && Math.abs(r.z + 6.5) < 1)).toBe(false)
-    // and there is a real path from the store floor to a hire spot through it (door opens on the service aisle)
-    const path = w.grid.findPath({ x: -8.5, z: 1 }, { x: -14, z: -3 })
+    expect(walls.some((r) => r.x === -16 && Math.abs(r.z + 3.25) < 0.01 && r.w === 0.5)).toBe(true) // west wall
+    expect(walls.some((r) => r.x === -10 && Math.abs(r.z + 3.25) < 0.01 && r.w === 0.5)).toBe(true) // east wall, solid
+    expect(walls.some((r) => Math.abs(r.x + 15) < 0.01 && r.z === 0.5)).toBe(true) // south wall, west segment
+    expect(walls.some((r) => Math.abs(r.x + 11) < 0.01 && r.z === 0.5)).toBe(true) // south wall, east segment
+    // the doorway itself (south side, facing the farm) stays free
+    expect(walls.some((r) => Math.abs(r.z - 0.5) < 0.26 && Math.abs(r.x + 13) < 0.9)).toBe(false)
+    // and there is a real path from the farm to a hire spot through it
+    const path = w.grid.findPath({ x: -8.5, z: 5 }, { x: -11.6, z: -2.8 })
     expect(path.length).toBeGreaterThan(1)
-    // the path is string-pulled: check where the leg that crosses the east wall (x = -12) passes
-    const crossing = path.slice(1).map((p, i) => [path[i], p]).find(([a, b]) => (a.x + 12) * (b.x + 12) <= 0)!
-    const [a, b] = crossing
-    const zAtWall = a.z + ((b.z - a.z) * (-12 - a.x)) / (b.x - a.x || 1)
-    expect(Math.abs(zAtWall + 6.5)).toBeLessThanOrEqual(0.8)
+    // the path is string-pulled: check where the leg that crosses the south wall (z = 0.5) passes
+    const [a, b] = path.slice(1).map((p, i) => [path[i], p]).find(([a, b]) => (a.z - 0.5) * (b.z - 0.5) <= 0)!
+    const xAtWall = a.x + ((b.x - a.x) * (0.5 - a.z)) / (b.z - a.z || 1)
+    expect(Math.abs(xAtWall + 13)).toBeLessThanOrEqual(0.8)
   })
 
   test('opening the cafeteria annex reveals the second staff hires', () => {
@@ -845,7 +1015,7 @@ describe('cashier hire spot', () => {
   })
 
   test('paying at the new office boxes hires a second farmer, shelver and chef', () => {
-    const w = createWorld(LEVEL1, { seed: 1, money: 1500, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'areaA2'] })
+    const w = createWorld(LEVEL1, { seed: 1, money: 1500, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1', 'wheat', 'cow', 'cheesePress', 'areaA2'] })
     w.spawnTimer = 999
     const spot = (id: string) => LEVEL1.unlocks.find((u) => u.id === id)!.zone
     standAt(w, spot('farmer2'), 8)
@@ -862,7 +1032,7 @@ describe('cashier hire spot', () => {
     w.spawnTimer = 999
     expect(w.visibleZones).toContain('cashier')
     const spot = LEVEL1.unlocks.find((u) => u.id === 'cashier')!.zone
-    standAt(w, spot, 3)
+    standAt(w, spot, 6)
     const checkout = station<Checkout>(w, 'checkout1')
     expect(checkout.cashier).toBe(true)
     expect(w.money).toBe(50)
@@ -981,7 +1151,7 @@ describe('expand or hire', () => {
   })
 })
 
-describe('layout v2 sanity', () => {
+describe('layout sanity', () => {
   type Box = { x: number; z: number; w: number; d: number }
   const overlap = (a: Box, b: Box) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 0.01 && Math.abs(a.z - b.z) < (a.d + b.d) / 2 - 0.01
   const inside = (p: Vec2, r: Box) => Math.abs(p.x - r.x) <= r.w / 2 && Math.abs(p.z - r.z) <= r.d / 2
@@ -1026,5 +1196,36 @@ describe('layout v2 sanity', () => {
   test('everything fits inside the level bounds', () => {
     for (const { def } of defs) expect(`${def.id}:${inside(def.pos, LEVEL1.bounds)}`).toBe(`${def.id}:true`)
     for (const u of LEVEL1.unlocks) expect(`${u.id}:${inside(u.zone, LEVEL1.bounds)}`).toBe(`${u.id}:true`)
+  })
+})
+
+describe('customer doors', () => {
+  const doorGapFree = (w: World, x: number) => !colliders(w).some((r) => Math.abs(r.z - LEVEL1.wallZ) < 0.01 && Math.abs(r.x - x) < r.w / 2)
+
+  test('the second door only opens once the store is expanded', () => {
+    const locked = createWorld(LEVEL1, { seed: 1 })
+    expect(doorGapFree(locked, -8.5)).toBe(true)
+    expect(activeDoors(locked).map((d) => d.id)).toEqual(['door1'])
+    const open = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1'] })
+    expect(activeDoors(open).map((d) => d.id)).toEqual(['door1', 'door2'])
+    expect(doorGapFree(open, 5)).toBe(true)
+    // the rest of A1's back wall stays solid
+    expect(doorGapFree(open, 10)).toBe(false)
+  })
+
+  test('customers appear on the street outside an open door', () => {
+    const w = createWorld(LEVEL1, { seed: 1, unlocked: ['planter2', 'eggs', 'canner', 'farmer', 'areaA1'] })
+    w.spawnTimer = 999
+    for (let i = 0; i < 8; i++) {
+      const c = spawnCustomer(w, 'shelfTomato')!
+      expect(c.pos.z).toBe(LEVEL1.wallZ - 1.5)
+      expect([-8.5, 5]).toContain(c.pos.x)
+    }
+  })
+
+  test('old saves with the removed milkFridge unlock still load', () => {
+    const ids = migrateUnlocks(['planter2', 'eggs', 'cow', 'milkFridge'], LEVEL1)!
+    expect(ids).toEqual(['planter2', 'eggs', 'cow'])
+    expect(() => createWorld(LEVEL1, { seed: 1, unlocked: ids })).not.toThrow()
   })
 })

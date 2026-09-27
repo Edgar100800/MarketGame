@@ -8,6 +8,9 @@ export type FlyKind = ItemKind | 'money'
 export type Vec2 = { x: number; z: number }
 export type Vec3 = [number, number, number]
 export type QuarterTurn = 0 | 1 | 2 | 3
+
+/** Headwear kinds for the chibi characters: staff uniforms + customer-only styles. */
+export type HatKind = 'none' | 'cap' | 'beanie' | 'chef' | 'straw' | 'visor' | 'bob' | 'bun' | 'afro' | 'bucket'
 /** Axis-aligned rectangle on the ground: center + size. */
 export type Rect = { x: number; z: number; w: number; d: number }
 
@@ -27,6 +30,15 @@ export interface DecoDef {
 }
 
 /** A trash bin the player can throw items into; id makes it selectable in the editor. */
+export interface DoorDef {
+  id: string
+  /** Center of the doorway along the back wall. */
+  x: number
+  width: number
+  /** Area whose back wall holds the door. */
+  area: string
+}
+
 export interface TrashDef {
   id: string
   pos: Vec2
@@ -166,10 +178,13 @@ export interface LevelDef {
   startReveals: string[]
   unlocks: UnlockDef[]
   playerStart: Vec2
-  spawnPoint: Vec2
-  exitPoint: Vec2
+  /** Where customers appear / leave when the level has no `doors`. */
+  spawnPoint?: Vec2
+  exitPoint?: Vec2
   /** Back wall z, shared by every store area. */
   wallZ: number
+  /** Customer entrances cut into the back wall; each one exists once its area is open. */
+  doors?: DoorDef[]
   /** Trash bins: stand in front of one to throw away what you carry (movable in the editor). */
   trash: TrashDef[]
   /** Decorative props placed around the map (movable in the editor). */
@@ -252,6 +267,9 @@ export interface Customer {
   facing: number
   moving: boolean
   color: number
+  /** Headwear picked at spawn, always different from the staff hats. */
+  hat: HatKind
+  hatColor: string
   shopping: ShoppingLine[]
   lineIndex: number
   items: CustomerItem[]

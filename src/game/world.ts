@@ -2,7 +2,8 @@ import { PLAYER_CAP, WORKER_CAP, WORKER_SPEED } from './config'
 import { applyUpgrades } from './upgrades'
 import { Grid } from './nav'
 import { SHELF_WIDTH, slotsFor } from './layout'
-import type { Customer, GameEvent, LevelDef, Player, ProducerModel, Rect, Shelf, Station, StationDef, TrashDef, UnlockDef, Vec2, Vec3, Worker } from './types'
+import { COLLIDERS, PADS } from './sizes'
+import type { Customer, DoorDef, GameEvent, LevelDef, Player, ProducerModel, Rect, Shelf, Station, StationDef, TrashDef, UnlockDef, Vec2, Vec3, Worker } from './types'
 import { localPoint, localRect, rotateOffset } from './spatial'
 
 export interface World {
@@ -34,6 +35,8 @@ export interface World {
   completed: boolean
   grid: Grid
   rand: () => number
+  /** Buy zone the tutorial currently commits to, so money runs don't yank the player off it. */
+  stickyBuy: string | null
 }
 
 /** Small deterministic RNG so tests can reproduce runs. */
@@ -94,19 +97,20 @@ export function buildStation(def: StationDef, time: number): Station {
       // the interaction zone IS the drawn pad (no second marker on the floor)
       if (def.model === 'planter') {
         // pad centered on the planter so tomatoes can be picked from both sides
-        const pad = rect(0, 0, 3.4, 3.0)
-        return { ...base, type: 'producer', collider: rect(0, 0, 2.6, 0.7), pad, zone: pad }
+        const pad = rect(0, 0, PADS.crop.w, PADS.crop.d)
+        return { ...base, type: 'producer', collider: rect(0, 0, COLLIDERS.crop.w, COLLIDERS.crop.d), pad, zone: pad }
       }
       if (def.model === 'cow') {
-        const pad = rect(0, 0, 4.3, 3.4)
-        return { ...base, type: 'producer', collider: rect(0, -0.2, 3.4, 1.8), pad, zone: pad }
+        const pad = rect(0, 0, PADS.barn.w, PADS.barn.d)
+        return { ...base, type: 'producer', collider: rect(0, -0.2, COLLIDERS.cow.w, COLLIDERS.cow.d), pad, zone: pad }
       }
-      const pad = def.model === 'nest' || def.model === 'beehive' ? rect(0, 0, 3.6, 2.6) : rect(0, 0, 4.3, 3.4)
-      return { ...base, type: 'producer', collider: null, pad, zone: pad }
+      // crop producers share one standard pad so the farm looks uniform
+      const pad = def.model === 'nest' || def.model === 'beehive' ? PADS.coop : def.model === 'plot' ? PADS.barn : PADS.crop
+      return { ...base, type: 'producer', collider: null, pad: rect(0, 0, pad.w, pad.d), zone: rect(0, 0, pad.w, pad.d) }
     }
     case 'shelf': {
       const w = def.model === 'crate' ? 1.9 : def.model === 'fridge' ? 1.7 : SHELF_WIDTH + 0.1
-      const pad = def.model === 'crate' ? rect(0, 0.45, 2.9, 2.2) : def.model === 'fridge' ? rect(0, 0.35, 2.8, 2.1) : rect(0, 0.3, 2.9, 2.5)
+      const pad = rect(0, 0.35, PADS.shelf.w, PADS.shelf.d)
       return {
         type: 'shelf',
         id: def.id,
@@ -119,13 +123,15 @@ export function buildStation(def: StationDef, time: number): Station {
         cap: def.cap,
         tiers: def.tiers ?? 2,
         // stepped shelves reach further back than crates
-        collider: def.model === 'crate' ? rect(0, 0, w + 0.1, 0.9) : def.model === 'fridge' ? rect(0, -0.05, w + 0.1, 0.9) : rect(0, -0.25, w + 0.1, 1.2),
+        collider: rect(0, def.model === 'shelf' ? -0.25 : def.model === 'fridge' ? -0.05 : 0, w + 0.1, def.model === 'shelf' ? COLLIDERS.shelfTall : COLLIDERS.shelfLow),
         pad,
         zone: pad,
         customerSpot: point(0, 1.25),
       }
     }
-    case 'machine':
+    case 'machine': {
+      // one pad: left half = drop ingredients (input tray side), right half = pick up (output tray side)
+      const half = PADS.machine.w / 4
       return {
         type: 'machine',
         id: def.id,
@@ -141,12 +147,12 @@ export function buildStation(def: StationDef, time: number): Station {
         recipe: { ...def.recipe },
         progress: 0,
         running: false,
-        collider: rect(0, 0, 2.9, 0.95),
-        // one pad: left half = drop ingredients (input tray side), right half = pick up (output tray side)
-        pad: rect(0, 0.55, 3.8, 2.5),
-        inZone: rect(-0.95, 0.55, 1.9, 2.5),
-        outZone: rect(0.95, 0.55, 1.9, 2.5),
+        collider: rect(0, 0, COLLIDERS.machine.w, COLLIDERS.machine.d),
+        pad: rect(0, 0.55, PADS.machine.w, PADS.machine.d),
+        inZone: rect(-half, 0.55, half * 2, PADS.machine.d),
+        outZone: rect(half, 0.55, half * 2, PADS.machine.d),
       }
+    }
     case 'checkout':
       return {
         type: 'checkout',
@@ -158,10 +164,10 @@ export function buildStation(def: StationDef, time: number): Station {
         queue: [],
         cashier: false,
         payTimer: 0,
-        collider: rect(0, 0, 2.7, 0.9),
+        collider: rect(0, 0, COLLIDERS.checkout.w, COLLIDERS.checkout.d),
         // pad covers the counter and the cashier side behind it
-        pad: rect(0, -0.55, 3.0, 2.1),
-        zone: rect(0, -0.55, 3.0, 2.1),
+        pad: rect(0, -0.55, PADS.checkout.w, PADS.checkout.d),
+        zone: rect(0, -0.55, PADS.checkout.w, PADS.checkout.d),
         spot: point(-0.3, -1.05),
         queueStart: point(-0.5, 1.1),
       }
@@ -214,6 +220,16 @@ export function stationDirection(s: Station, x: number, z: number): Vec2 {
   return rotateOffset({ x, z }, s.turn)
 }
 
+/** Customer doors currently open: a door exists once its area is unlocked. */
+export function activeDoors(w: World): DoorDef[] {
+  return (w.level.doors ?? []).filter((d) => w.areas.has(d.area))
+}
+
+/** Street point right outside a door, where customers appear and leave. */
+export function doorOutside(level: LevelDef, door: DoorDef): Vec2 {
+  return { x: door.x, z: level.wallZ - 1.5 }
+}
+
 /** Trash bins currently in play: bins tied to an area only exist once it is unlocked. */
 export function activeTrash(w: World): TrashDef[] {
   return w.level.trash.filter((t) => !t.area || w.areas.has(t.area))
@@ -221,7 +237,7 @@ export function activeTrash(w: World): TrashDef[] {
 
 /** Zone in front of a trash bin. */
 export function trashZone(t: TrashDef): Rect {
-  return { x: t.pos.x, z: t.pos.z + 0.45, w: 1.7, d: 2.0 }
+  return { x: t.pos.x, z: t.pos.z + 0.45, w: PADS.bin.w, d: PADS.bin.d }
 }
 
 /** Point just inside the front edge of a pad: where someone walks to use it. */
@@ -239,12 +255,22 @@ export function unlockDef(w: World, id: string): UnlockDef {
 export function colliders(w: World): Rect[] {
   const out: Rect[] = []
   for (const s of w.stations) if (s.collider) out.push(s.collider)
-  for (const t of activeTrash(w)) out.push({ x: t.pos.x, z: t.pos.z, w: 0.8, d: 0.7 })
+  for (const t of activeTrash(w)) out.push({ x: t.pos.x, z: t.pos.z, w: COLLIDERS.bin.w, d: COLLIDERS.bin.d })
   // back wall over every unlocked area
   for (const a of w.level.areas) {
     const r = a.rect
-    if (w.areas.has(a.id)) out.push({ x: r.x, z: w.level.wallZ, w: r.w, d: 0.5 })
-    else out.push({ x: r.x, z: r.z, w: r.w, d: r.d }) // locked area is blocked
+    if (w.areas.has(a.id)) {
+      // back wall, split around this area's doors
+      let lo = r.x - r.w / 2
+      const doors = activeDoors(w).filter((d) => d.area === a.id).sort((p, q) => p.x - q.x)
+      for (const d of doors) {
+        const gap = d.x - d.width / 2
+        if (gap - lo > 0.05) out.push({ x: (lo + gap) / 2, z: w.level.wallZ, w: gap - lo, d: 0.5 })
+        lo = d.x + d.width / 2
+      }
+      const hi = r.x + r.w / 2
+      if (hi - lo > 0.05) out.push({ x: (lo + hi) / 2, z: w.level.wallZ, w: hi - lo, d: 0.5 })
+    } else out.push({ x: r.x, z: r.z, w: r.w, d: r.d }) // locked area is blocked
     if (!w.areas.has(a.id) || !a.enclose) continue
     // enclosed area: solid side walls, the north side is the shared back wall
     const t = 0.5
@@ -383,6 +409,7 @@ export function createWorld(level: LevelDef, opts: WorldOptions = {}): World {
     events: [],
     version: 0,
     completed: false,
+    stickyBuy: null,
     grid: new Grid(level.bounds, [], 0.5, 0.3),
     rand: opts.seed === undefined ? Math.random : mulberry32(opts.seed),
   }

@@ -11,7 +11,9 @@ export function autopilot(w: World, input: Input) {
   const target = objective(w).target
   input.x = 0
   input.y = 0
-  if (!target || dist(w.player.pos, target) < 0.25) return
+  // stop radius a bit over half a buy zone: targets flush against walls jitter
+  // between two grid paths and would otherwise never settle on 0.25
+  if (!target || dist(w.player.pos, target) < 0.45) return
   const path = w.grid.findPath(w.player.pos, target)
   const next = path[0] ?? target
   const dx = next.x - w.player.pos.x

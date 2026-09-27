@@ -13,6 +13,7 @@ import { Customers, PlayerView, Workers } from '../components/Actors'
 import { FloatingTexts, FlyingItems, TutorialArrow, UnlockBursts } from '../components/Effects'
 import { BuyZones, StoreShell } from '../components/StoreShell'
 import { buildStation } from '../game/world'
+import { PADS } from '../game/sizes'
 import { stationDefs, stationRelations, TIER_COLORS, unlockTiers, useEditor, type EditorSelection } from '../game/editor'
 import { SafeHtml } from '../models/Labels'
 import { BuyZone, TrashBin } from '../models/Store'
@@ -212,7 +213,7 @@ function EditorScene() {
                 beginDrag({ type: 'zone', id: unlock.id }, unlock.zone)
               }}
             >
-              <boxGeometry args={[1.8, 0.16, 1.8]} />
+              <boxGeometry args={[PADS.buy.w, 0.16, PADS.buy.d]} />
               <meshBasicMaterial color={baseColor} transparent opacity={baseOpacity} depthWrite={false} />
             </mesh>
             {showTier && !filteredOut && (
@@ -237,7 +238,7 @@ function EditorScene() {
                 beginDrag({ type: 'trash', id: bin.id }, bin.pos)
               }}
             >
-              <boxGeometry args={[1.8, 0.16, 1.8]} />
+              <boxGeometry args={[PADS.bin.w + 0.1, 0.16, PADS.bin.d + 0.1]} />
               <meshBasicMaterial color="#7cff5e" transparent opacity={active ? 0.42 : 0.001} depthWrite={false} />
             </mesh>
           </group>
@@ -291,7 +292,7 @@ export function Level1({ editing = false }: { editing?: boolean }) {
       {editing ? <EditorScene /> : <CameraRig />}
       <color attach="background" args={[C.grass]} />
       <Lighting size={26} />
-      <StoreShell />
+      <StoreShell editing={editing} />
       {!editing && <Stations />}
       {!editing && <BuyZones />}
       {!editing && <Customers />}

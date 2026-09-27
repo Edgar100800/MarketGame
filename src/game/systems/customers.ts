@@ -1,3 +1,4 @@
+import { CLOTH_COLORS, HAIR_COLORS } from '../../materials/palette'
 import {
   CUSTOMER_MAX_ITEMS,
   CUSTOMER_MAX_KINDS,
@@ -12,10 +13,20 @@ import {
   SPAWN_MAX,
   SPAWN_MIN,
 } from '../config'
-import type { Checkout, Customer, CustomerCarryMode, Shelf, ShoppingLine, Vec2 } from '../types'
-import { dist, inRect, shelfSlotPos, stationDirection, stationPoint, walkPath, type World } from '../world'
+import type { Checkout, Customer, CustomerCarryMode, HatKind, Shelf, ShoppingLine, Vec2 } from '../types'
+import { activeDoors, dist, doorOutside, inRect, shelfSlotPos, stationDirection, stationPoint, walkPath, type World } from '../world'
 
 const QUEUE_GAP = 0.9
+
+/** Customer-only headwear: workers never wear any of these. */
+const CUSTOMER_HEADS: HatKind[] = ['beanie', 'bob', 'bun', 'afro', 'bucket']
+
+/** Headwear + color for a customer. Derived from id and body color (no extra rand draws, seeds stay stable). */
+function headLook(id: number, color: number): { hat: HatKind; hatColor: string } {
+  const hat = CUSTOMER_HEADS[(id + color * 2) % CUSTOMER_HEADS.length]
+  const palette = hat === 'beanie' || hat === 'bucket' ? CLOTH_COLORS : HAIR_COLORS
+  return { hat, hatColor: palette[(id * 3 + color) % palette.length] }
+}
 
 function shelves(w: World) {
   return w.stations.filter((station): station is Shelf => station.type === 'shelf' && station.bornAt <= w.time)
@@ -91,9 +102,23 @@ function goToLine(w: World, customer: Customer) {
   return true
 }
 
+/** Where a new customer appears: outside a random open door (or the level's spawn point). */
+function entryPoint(w: World): Vec2 {
+  const doors = activeDoors(w)
+  if (!doors.length) return { ...(w.level.spawnPoint ?? w.level.playerStart) }
+  return doorOutside(w.level, doors[Math.floor(w.rand() * doors.length)])
+}
+
+/** Where a customer leaves: outside the closest open door (or the level's exit point). */
+function exitPoint(w: World, from: Vec2): Vec2 {
+  const doors = activeDoors(w).map((door) => doorOutside(w.level, door))
+  if (!doors.length) return w.level.exitPoint ?? w.level.playerStart
+  return doors.reduce((best, p) => (dist(p, from) < dist(best, from) ? p : best), doors[0])
+}
+
 function leave(w: World, customer: Customer) {
   customer.state = 'leaving'
-  customer.path = w.grid.findPath(customer.pos, w.level.exitPoint)
+  customer.path = w.grid.findPath(customer.pos, exitPoint(w, customer.pos))
 }
 
 function joinQueue(w: World, customer: Customer) {
@@ -124,12 +149,15 @@ export function spawnCustomer(w: World, shelfId?: string): Customer | null {
   if (!all.length || (shelfId && !forced)) return null
   const shopping = shoppingList(w, all, forced)
   const total = shopping.reduce((sum, line) => sum + line.requested, 0)
+  const id = w.nextCustomerId++
+  const color = Math.floor(w.rand() * 6)
   const customer: Customer = {
-    id: w.nextCustomerId++,
-    pos: { ...w.level.spawnPoint },
+    id,
+    pos: entryPoint(w),
     facing: Math.PI / 2,
     moving: true,
-    color: Math.floor(w.rand() * 6),
+    color,
+    ...headLook(id, color),
     shopping,
     lineIndex: 0,
     items: [],

@@ -3,9 +3,9 @@ import { debug, input, restart, useGame } from '../game/state'
 import { ProductIcon } from '../models/Icon2D'
 import { UpgradesPanel } from './UpgradesPanel'
 
-type MoneyFloat = { id: number; text: string }
+type MoneyFloat = { id: number; text: string; loss: boolean }
 
-/** Money counter that eases towards the real value, pulses and floats "+$X" on gains. */
+/** Money counter that eases towards the real value, pulses and floats "+$X" / "-$X" on changes. */
 function MoneyCounter() {
   const money = useGame((s) => s.money)
   const [shown, setShown] = useState(money)
@@ -13,6 +13,7 @@ function MoneyCounter() {
   const [floats, setFloats] = useState<MoneyFloat[]>([])
   const prev = useRef(money)
   const pending = useRef(0)
+  const pendingLoss = useRef(0)
   const nextId = useRef(0)
 
   // roll towards the real value with exponential ease-out
@@ -20,7 +21,7 @@ function MoneyCounter() {
     if (shown === money) return
     const id = requestAnimationFrame(() => {
       const diff = money - shown
-      setShown(shown + Math.sign(diff) * Math.max(1, Math.round(Math.abs(diff) * 0.18)))
+      setShown(shown + Math.sign(diff) * Math.max(1, Math.round(Math.abs(diff) * 0.1)))
     })
     return () => cancelAnimationFrame(id)
   }, [money, shown])
@@ -29,16 +30,24 @@ function MoneyCounter() {
   useEffect(() => {
     const gain = money - prev.current
     prev.current = money
-    if (gain <= 0) return
-    setPulsing(true)
-    pending.current += gain
+    if (gain > 0) {
+      setPulsing(true)
+      pending.current += gain
+    } else if (gain < 0) {
+      pendingLoss.current -= gain
+    } else return
     const id = setTimeout(() => {
       const amount = pending.current
+      const lost = pendingLoss.current
       pending.current = 0
-      if (amount <= 0) return
-      const key = nextId.current++
-      setFloats((fs) => [...fs, { id: key, text: `+$${amount}` }])
-      setTimeout(() => setFloats((fs) => fs.filter((f) => f.id !== key)), 1100)
+      pendingLoss.current = 0
+      const batch: MoneyFloat[] = []
+      if (amount > 0) batch.push({ id: nextId.current++, text: `+$${amount}`, loss: false })
+      if (lost > 0) batch.push({ id: nextId.current++, text: `-$${lost}`, loss: true })
+      if (!batch.length) return
+      setFloats((fs) => [...fs, ...batch])
+      const keys = batch.map((f) => f.id)
+      setTimeout(() => setFloats((fs) => fs.filter((f) => !keys.includes(f.id))), 1100)
     }, 300)
     return () => clearTimeout(id)
   }, [money])
@@ -50,7 +59,7 @@ function MoneyCounter() {
         {shown}
       </span>
       {floats.map((f) => (
-        <span key={f.id} className="hud-money-float">
+        <span key={f.id} className={f.loss ? 'hud-money-float loss' : 'hud-money-float'}>
           {f.text}
         </span>
       ))}
