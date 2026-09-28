@@ -26,6 +26,8 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Build
         run: bun run build
+        env:
+          VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

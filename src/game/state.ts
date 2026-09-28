@@ -5,6 +5,7 @@ import { objective } from './systems/objective'
 import { autopilot } from './systems/autopilot'
 import { tick } from './loop'
 import { restoreWorld, snapshotWorld, type RuntimeSnapshot } from './save'
+import { frameAnalytics, levelRestarted } from './analytics'
 import type { GameEvent, Input, LevelDef, Objective } from './types'
 
 // Bridge between the pure simulation and React.
@@ -143,6 +144,7 @@ export const useGame = create<GameUI>(() => ({
 }))
 
 export function restart() {
+  levelRestarted()
   clearSave()
   world = makeWorld()
   useGame.setState((s) => ({ run: s.run + 1, money: world.money, version: world.version, completed: false, objective: objective(world), sigs: {} }))
@@ -190,6 +192,7 @@ export function onGameEvent(l: Listener) {
 let saveTimer = 0
 /** Called once per frame after `tick`. */
 export function sync(w: World, dt: number) {
+  frameAnalytics(w)
   const events = w.events.splice(0)
   for (const e of events) for (const l of listeners) l(e)
 

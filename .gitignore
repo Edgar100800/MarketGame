@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# local env (e.g. VITE_POSTHOG_KEY for testing analytics)
+.env*.local
