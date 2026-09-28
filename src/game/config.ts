@@ -35,12 +35,22 @@ export const PAY_TIME = 0.7
 export const CUSTOMER_TAKE_TIME = 0.35
 /** Seconds a customer waits at an empty shelf before paying what they have (or leaving). */
 export const PATIENCE = 18
-export const SPAWN_MIN = 4
-export const SPAWN_MAX = 7
-export const LATE_SPAWN_MIN = 2.5
-export const LATE_SPAWN_MAX = 4.5
+// Demand (systems/demand.ts): a 0..1 score from stations built and staff hired/upgraded.
+// Every value below goes from its "empty store" end to its "full store" end as demand grows.
+/** Share of demand that comes from built shelves and machines; the rest comes from staff. */
+export const DEMAND_BUILD_WEIGHT = 0.6
+/** Seconds between customers: [min, max] at demand 0 and at demand 1. */
+export const SPAWN_EARLY: [number, number] = [5, 8]
+export const SPAWN_LATE: [number, number] = [2.5, 4]
+/** Largest shopping list (items), at demand 0 and 1. */
+export const ITEMS_EARLY = 3
 export const CUSTOMER_MAX_ITEMS = 8
+/** Distinct products in one list, at demand 0 and 1. */
+export const KINDS_EARLY = 1
 export const CUSTOMER_MAX_KINDS = 3
+/** Customers in the store at once, at demand 0 and 1 (also capped at 1 + 2 per shelf). */
+export const CUSTOMERS_EARLY = 3
+export const CUSTOMERS_LATE = 12
 export const PAY_PER_ITEM = 0.12
 
 export const PRICE: Record<ItemKind, number> = Object.fromEntries(

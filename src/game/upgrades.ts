@@ -10,6 +10,9 @@ export const MAX_LEVEL = 4
 /** Capacity paths: the player starts on the ladder, workers join it with their first upgrade. */
 const PLAYER_TIERS = [4, 6, 8]
 const WORKER_TIERS = [3, 4, 6, 8]
+/** Highest level of each worker stat (capacity ladder, speed). */
+export const WORKER_STACK_MAX = WORKER_TIERS.length - 1
+export const WORKER_SPEED_MAX = MAX_LEVEL
 
 export interface UpgradeStat {
   key: string
@@ -67,7 +70,7 @@ export function upgradeRows(w: World, tab: UpgradeTab): UpgradeRow[] {
         title: ROLE_NAME[wk.role],
         icon: ROLE_ICON[wk.role],
         items: ROLE_ITEMS[wk.role],
-        stats: [stat(w, `w:${wk.id}.stack`, 'Carga', 60, WORKER_TIERS.length - 1), stat(w, `w:${wk.id}.speed`, 'Velocidad', 70)],
+        stats: [stat(w, `w:${wk.id}.stack`, 'Carga', 60, WORKER_STACK_MAX), stat(w, `w:${wk.id}.speed`, 'Velocidad', 70, WORKER_SPEED_MAX)],
         workerId: wk.id,
         paused: wk.paused,
       })

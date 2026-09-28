@@ -18,6 +18,7 @@ import { stationDefs, stationRelations, TIER_COLORS, unlockTiers, useEditor, typ
 import { SafeHtml } from '../models/Labels'
 import { BuyZone, TrashBin } from '../models/Store'
 import { DecoView } from '../components/DecoView'
+import { PerfProbe } from '../components/PerfProbe'
 
 const PITCH = (52 * Math.PI) / 180
 const DIST = 24
@@ -302,9 +303,11 @@ export function Level1({ editing = false }: { editing?: boolean }) {
   return (
     <>
       {!editing && <GameLoop />}
+      {debug.perf && <PerfProbe />}
       {editing ? <EditorScene /> : debug.shot ? <ShotCamera /> : <CameraRig />}
       <color attach="background" args={[C.grass]} />
-      <Lighting size={26} />
+      {/* play view: shadow box follows the camera; editor and ?shot see the whole level */}
+      <Lighting size={editing || debug.shot ? 26 : 18} follow={!editing && !debug.shot} />
       <StoreShell editing={editing} />
       {!editing && <Stations />}
       {!editing && <BuyZones />}

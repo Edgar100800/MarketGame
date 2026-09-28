@@ -4,6 +4,7 @@ import { floorY } from './StationView'
 import { BakeryCase, Chair, CoffeeCorner, Desk, FlowerStand, FloorMat } from '../models/Store'
 import { Bench, FlowerPatch, Rock, StreetLamp, Tree } from '../models/Deco'
 import { Pill } from '../models/Labels'
+import { Rigid } from '../models/Rigid'
 
 const MODELS = {
   tree: Tree,
@@ -24,7 +25,9 @@ export function DecoView({ def }: { def: DecoDef }) {
   const Model = MODELS[def.model]
   return (
     <group position={[def.pos.x, floorY(def.pos.x, def.pos.z), def.pos.z]} rotation={[0, turnRadians(def.turn ?? 0), 0]}>
-      <Model />
+      <Rigid>
+        <Model />
+      </Rigid>
       {def.label && <Pill text={def.label} position={[0, 2.1, 0]} />}
     </group>
   )

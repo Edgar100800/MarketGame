@@ -1,6 +1,6 @@
 import type { ThreeElements } from '@react-three/fiber'
 import { C } from '../materials/palette'
-import { Ball, Box, Cyl, Part, RBox } from './parts'
+import { Ball, Box, Cyl, NoShadow, Part, RBox } from './parts'
 import type { ProductKind } from '../game/types'
 export type { ProductKind } from '../game/types'
 
@@ -227,7 +227,11 @@ export const PRODUCT_HEIGHT: Record<ProductKind, number> = {
 
 export function Product({ kind, ...props }: GroupProps & { kind: ProductKind }) {
   const Comp = REGISTRY[kind]
-  return <Comp {...props} />
+  return (
+    <NoShadow>
+      <Comp {...props} />
+    </NoShadow>
+  )
 }
 
 /** Vertical stack, like what the player carries or money piles on counters. */
@@ -249,5 +253,9 @@ export function MoneyPile({ cols = 3, rows = 2, layers = 3, ...props }: GroupPro
     for (let c = 0; c < cols; c++)
       for (let r = 0; r < rows; r++)
         items.push(<Money key={`${l}-${c}-${r}`} position={[(c - (cols - 1) / 2) * 0.42, l * 0.085, (r - (rows - 1) / 2) * 0.24]} />)
-  return <group {...props}>{items}</group>
+  return (
+    <NoShadow>
+      <group {...props}>{items}</group>
+    </NoShadow>
+  )
 }

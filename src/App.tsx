@@ -21,8 +21,8 @@ export default function App() {
     <>
       <Canvas
         shadows
-        dpr={[1, 2]}
-        gl={{ antialias: true, toneMapping: NoToneMapping, outputColorSpace: SRGBColorSpace, preserveDrawingBuffer: true }}
+        dpr={[1, 1.5]}
+        gl={{ antialias: true, toneMapping: NoToneMapping, outputColorSpace: SRGBColorSpace, preserveDrawingBuffer: debug.shot }}
       >
         <Level1 />
       </Canvas>

@@ -3,6 +3,7 @@ import { useFrame, type ThreeElements } from '@react-three/fiber'
 import { CatmullRomCurve3, Vector3, type Group } from 'three'
 import { C } from '../materials/palette'
 import { Ball, Capsule, Cyl, LINE_BOLD, LINE_FINE, LINE_MID, Part, RBox, type PartProps } from './parts'
+import { Rigid } from './Rigid'
 
 export type { HatKind } from '../game/types'
 import type { HatKind } from '../game/types'
@@ -255,11 +256,13 @@ function Leg({ side, color, limb }: { side: number; color: string; limb: Limb })
     <group ref={(g) => void (limb.root = g)} position={[side * 0.11, 0, 0]}>
       <Capsule r={0.09} len={0.12} color={color} position={[0, -0.1, 0]} line={LINE_MID} />
       <group ref={(g) => void (limb.joint = g)} position={[0, -0.2, 0]}>
-        {/* knee cap hides the gap when bending */}
-        <Ball r={0.085} color={color} outline={false} />
-        <Capsule r={0.082} len={0.1} color={color} position={[0, -0.1, 0]} line={LINE_MID} />
-        {/* foot, pointing forward */}
-        <Capsule r={0.075} len={0.07} color={color} position={[0, -0.2, 0.04]} rotation={[Math.PI / 2, 0, 0]} line={LINE_FINE} />
+        <Rigid>
+          {/* knee cap hides the gap when bending */}
+          <Ball r={0.085} color={color} outline={false} />
+          <Capsule r={0.082} len={0.1} color={color} position={[0, -0.1, 0]} line={LINE_MID} />
+          {/* foot, pointing forward */}
+          <Capsule r={0.075} len={0.07} color={color} position={[0, -0.2, 0.04]} rotation={[Math.PI / 2, 0, 0]} line={LINE_FINE} />
+        </Rigid>
       </group>
     </group>
   )
@@ -269,12 +272,16 @@ function Leg({ side, color, limb }: { side: number; color: string; limb: Limb })
 function Arm({ side, color, sleeve = color, limb }: { side: number; color: string; sleeve?: string; limb: Limb }) {
   return (
     <group ref={(g) => void (limb.root = g)} position={[side * SHOULDER_X, SHOULDER_Y, 0]}>
-      <Ball r={0.075} color={sleeve} outline={false} />
-      <Capsule r={0.07} len={0.1} color={sleeve} position={[0, -0.09, 0]} line={LINE_MID} />
+      <Rigid>
+        <Ball r={0.075} color={sleeve} outline={false} />
+        <Capsule r={0.07} len={0.1} color={sleeve} position={[0, -0.09, 0]} line={LINE_MID} />
+      </Rigid>
       <group ref={(g) => void (limb.joint = g)} position={[0, -0.19, 0]}>
-        <Ball r={0.068} color={sleeve} outline={false} />
-        <Capsule r={0.066} len={0.08} color={sleeve} position={[0, -0.08, 0]} line={LINE_MID} />
-        <Ball r={0.078} color={color} position={[0, -0.18, 0]} line={LINE_FINE} />
+        <Rigid>
+          <Ball r={0.068} color={sleeve} outline={false} />
+          <Capsule r={0.066} len={0.08} color={sleeve} position={[0, -0.08, 0]} line={LINE_MID} />
+          <Ball r={0.078} color={color} position={[0, -0.18, 0]} line={LINE_FINE} />
+        </Rigid>
       </group>
     </group>
   )
@@ -343,16 +350,18 @@ export function Character({ color, hat = 'none', hatColor = C.white, tie = false
         <Leg side={-1} color={color} limb={legs[0]} />
         <Leg side={1} color={color} limb={legs[1]} />
         <group ref={torso}>
-          <Capsule r={0.24} len={0.16} color={top ?? color} position={[0, 0.26, 0]} line={LINE_BOLD} />
-          {buttons && <ChestButtons color={buttons} />}
-          {tie && <NeckTie />}
-          {vest && <Vest color={vest} />}
+          <Rigid>
+            <Capsule r={0.24} len={0.16} color={top ?? color} position={[0, 0.26, 0]} line={LINE_BOLD} />
+            {buttons && <ChestButtons color={buttons} />}
+            {tie && <NeckTie />}
+            {vest && <Vest color={vest} />}
+            <group position={[0, HEAD_Y, 0]}>
+              <Ball r={HEAD_R} color={color} line={LINE_BOLD} />
+              <Hat kind={hat} color={hatColor} />
+            </group>
+          </Rigid>
           <Arm side={-1} color={color} sleeve={top} limb={arms[0]} />
           <Arm side={1} color={color} sleeve={top} limb={arms[1]} />
-          <group position={[0, HEAD_Y, 0]}>
-            <Ball r={HEAD_R} color={color} line={LINE_BOLD} />
-            <Hat kind={hat} color={hatColor} />
-          </group>
           {carry && <group position={[0, 0.2, 0.42]}>{carry}</group>}
         </group>
       </group>

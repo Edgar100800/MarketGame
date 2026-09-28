@@ -1,18 +1,6 @@
 import { CLOTH_COLORS, HAIR_COLORS } from '../../materials/palette'
-import {
-  CUSTOMER_MAX_ITEMS,
-  CUSTOMER_MAX_KINDS,
-  CUSTOMER_SPEED,
-  CUSTOMER_TAKE_TIME,
-  LATE_SPAWN_MAX,
-  LATE_SPAWN_MIN,
-  PATIENCE,
-  PAY_PER_ITEM,
-  PAY_TIME,
-  PRICE,
-  SPAWN_MAX,
-  SPAWN_MIN,
-} from '../config'
+import { CUSTOMER_SPEED, CUSTOMER_TAKE_TIME, PATIENCE, PAY_PER_ITEM, PAY_TIME, PRICE } from '../config'
+import { demand, maxCrowd, maxItems, maxKinds, spawnDelay } from './demand'
 import type { Checkout, Customer, CustomerCarryMode, HatKind, Shelf, ShoppingLine, Station, Vec2 } from '../types'
 import { activeDoors, dist, doorOutside, inRect, shelfSlotPos, stationDirection, stationPoint, walkPath, type World } from '../world'
 import { CHARACTER_SCALE } from '../sizes'
@@ -111,7 +99,7 @@ function keepInLine(customer: Customer, slots: Vec2[], index: number, out: Vec2)
 }
 
 function maxCustomers(w: World) {
-  return Math.min(12, 1 + shelves(w).length * 2)
+  return Math.min(maxCrowd(demand(w)), 1 + shelves(w).length * 2)
 }
 
 export function activeLine(customer: Customer) {
@@ -122,11 +110,11 @@ export function customerCarryMode(total: number): CustomerCarryMode {
   return total <= 2 ? 'hands' : total <= 4 ? 'basket' : 'cart'
 }
 
-function desiredTotal(w: World) {
+/** Small, medium or big list, scaled to the current demand (1-2 items early, up to 8 later). */
+function desiredTotal(w: World, max: number) {
   const roll = w.rand()
-  if (roll < 0.35) return 1 + Math.floor(w.rand() * 2)
-  if (roll < 0.7) return 3 + Math.floor(w.rand() * 2)
-  return 5 + Math.floor(w.rand() * (CUSTOMER_MAX_ITEMS - 4))
+  const [lo, hi] = roll < 0.35 ? [1, Math.min(2, max)] : roll < 0.7 ? [Math.ceil(max * 0.4), Math.ceil(max * 0.6)] : [Math.ceil(max * 0.6), max]
+  return lo + Math.floor(w.rand() * (hi - lo + 1))
 }
 
 function shoppingList(w: World, all: Shelf[], forced?: Shelf): ShoppingLine[] {
@@ -136,8 +124,10 @@ function shoppingList(w: World, all: Shelf[], forced?: Shelf): ShoppingLine[] {
   }
 
   const byKind = [...new Map(all.map((shelf) => [shelf.kind, shelf])).values()]
-  const total = desiredTotal(w)
-  const distinct = Math.min(byKind.length, CUSTOMER_MAX_KINDS, total, 1 + Math.floor(w.rand() * CUSTOMER_MAX_KINDS))
+  const d = demand(w)
+  const total = desiredTotal(w, maxItems(d))
+  const kinds = maxKinds(d)
+  const distinct = Math.min(byKind.length, kinds, total, 1 + Math.floor(w.rand() * kinds))
   const chosen: Shelf[] = []
   const pool = [...byKind]
   while (chosen.length < distinct && pool.length) chosen.push(pool.splice(Math.floor(w.rand() * pool.length), 1)[0])
@@ -249,10 +239,7 @@ export function attended(w: World, checkout: Checkout) {
 export function updateCustomers(w: World, dt: number) {
   w.spawnTimer -= dt
   if (w.spawnTimer <= 0) {
-    const late = w.stations.some((station) => station.id === 'checkout2')
-    const min = late ? LATE_SPAWN_MIN : SPAWN_MIN
-    const max = late ? LATE_SPAWN_MAX : SPAWN_MAX
-    w.spawnTimer = min + w.rand() * (max - min)
+    w.spawnTimer = spawnDelay(demand(w), w.rand())
     if (w.customers.length < maxCustomers(w)) spawnCustomer(w)
   }
 

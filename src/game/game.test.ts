@@ -9,10 +9,11 @@ import { objective } from './systems/objective'
 import { fridgeSlots, shelfSlots, SPACING, type SlotKind } from './layout'
 import { pushItem, setStack } from './stack'
 import { restoreWorld, snapshotWorld } from './save'
-import { buyUpgrade } from './upgrades'
+import { buyUpgrade, WORKER_SPEED_MAX, WORKER_STACK_MAX } from './upgrades'
+import { demand, maxCrowd, spawnDelay } from './systems/demand'
 import { applyLayout, layoutOf, stationRelations, unlockTiers, useEditor, type LayoutFile } from './editor'
 import { PADS, SLOT_SIZE, STATION_SCALE as S } from './sizes'
-import { PRICE } from './config'
+import { ITEMS_EARLY, PRICE, SPAWN_EARLY, SPAWN_LATE } from './config'
 import { migrateUnlocks } from './state'
 import type { Checkout, Machine, Producer, Shelf, Vec2 } from './types'
 
@@ -205,13 +206,57 @@ describe('second checkout', () => {
     expect(new Set([first.checkoutId, second.checkoutId])).toEqual(new Set(['checkout1', 'checkout2']))
   })
 
-  test('second cashier only attends checkout2 and enables faster traffic', () => {
+  test('second cashier only attends checkout2', () => {
     const w = createWorld(LEVEL1, { seed: 1, unlocked: [...checkoutUnlocks, 'cashier2'] })
     expect(station<Checkout>(w, 'checkout1').cashier).toBe(false)
     expect(station<Checkout>(w, 'checkout2').cashier).toBe(true)
-    w.spawnTimer = 0
-    tick(w, idle, 1 / 30)
-    expect(w.spawnTimer).toBeLessThanOrEqual(4.5)
+  })
+})
+
+describe('demand', () => {
+  const maxStaff = (w: World) => {
+    for (const wk of w.workers) {
+      w.upgrades[`w:${wk.id}.stack`] = WORKER_STACK_MAX
+      w.upgrades[`w:${wk.id}.speed`] = WORKER_SPEED_MAX
+    }
+  }
+
+  test('starts low and reaches 1 with every station and a fully trained staff', () => {
+    const w = createWorld(LEVEL1, { seed: 1 })
+    expect(demand(w)).toBeLessThan(0.15)
+    unlockAll(w)
+    maxStaff(w)
+    expect(demand(w)).toBeCloseTo(1, 5)
+  })
+
+  test('never drops while the store grows, and worker upgrades raise it', () => {
+    const w = createWorld(LEVEL1, { seed: 1 })
+    let last = demand(w)
+    for (const unlock of LEVEL1.unlocks) {
+      applyUnlock(w, unlock.id, false)
+      expect(demand(w)).toBeGreaterThanOrEqual(last)
+      last = demand(w)
+    }
+    const before = demand(w)
+    w.upgrades[`w:${w.workers[0].id}.speed`] = 2
+    expect(demand(w)).toBeGreaterThan(before)
+  })
+
+  test('early customers bring short single-product lists', () => {
+    const w = createWorld(LEVEL1, { seed: 4, unlocked: ['planter2', 'eggs'] })
+    w.spawnTimer = 999
+    for (let i = 0; i < 30; i++) {
+      const customer = spawnCustomer(w)!
+      expect(customer.shopping.length).toBe(1)
+      expect(customer.shopping[0].requested).toBeLessThanOrEqual(ITEMS_EARLY)
+    }
+  })
+
+  test('customers arrive faster and more at once as demand grows', () => {
+    for (const roll of [0, 0.5, 1]) expect(spawnDelay(1, roll)).toBeLessThan(spawnDelay(0, roll))
+    expect(spawnDelay(0, 0)).toBe(SPAWN_EARLY[0])
+    expect(spawnDelay(1, 1)).toBe(SPAWN_LATE[1])
+    expect(maxCrowd(0)).toBeLessThan(maxCrowd(1))
   })
 })
 

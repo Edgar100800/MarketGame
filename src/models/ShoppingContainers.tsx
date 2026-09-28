@@ -5,6 +5,7 @@ import { C } from '../materials/palette'
 import type { CustomerItem } from '../game/types'
 import { Box, Cyl, ItemPop, RBox } from './parts'
 import { Product } from './Products'
+import { Rigid } from './Rigid'
 
 type GroupProps = ThreeElements['group']
 
@@ -27,6 +28,7 @@ function BasketItems({ items, cart = false }: { items: CustomerItem[]; cart?: bo
 export function ShoppingBasket({ items, ...props }: GroupProps & { items: CustomerItem[] }) {
   return (
     <group {...props}>
+      <Rigid>
       {/* Rounded base and open slats keep products visible from every angle. */}
       <RBox size={[0.76, 0.12, 0.56]} radius={0.055} color={C.orange} position={[0, 0.02, 0]} />
       {[-1, 1].map((side) => (
@@ -45,6 +47,7 @@ export function ShoppingBasket({ items, ...props }: GroupProps & { items: Custom
       <Box size={[0.055, 0.62, 0.055]} color={C.orange} position={[-0.3, 0.42, 0]} rotation={[0, 0, -0.34]} />
       <Box size={[0.055, 0.62, 0.055]} color={C.orange} position={[0.3, 0.42, 0]} rotation={[0, 0, 0.34]} />
       <RBox size={[0.42, 0.075, 0.075]} radius={0.03} color={C.dark} position={[0, 0.69, 0]} />
+      </Rigid>
       <BasketItems items={items} />
     </group>
   )
@@ -61,6 +64,7 @@ export function ShoppingCart({ items, moving, ...props }: GroupProps & { items: 
   return (
     <group {...props}>
       <group ref={frame}>
+        <Rigid>
         {/* Dark chassis floats over the wheels and carries the mint basket. */}
         <Box size={[0.88, 0.07, 0.62]} color={C.dark} position={[0, 0.34, 0.03]} />
 
@@ -94,6 +98,7 @@ export function ShoppingCart({ items, moving, ...props }: GroupProps & { items: 
         {/* Lower rack gives empty cart useful detail. */}
         <Box size={[0.66, 0.05, 0.46]} color={C.gray} position={[0, 0.35, 0.03]} />
         {[-0.2, 0, 0.2].map((x) => <Box key={x} size={[0.035, 0.04, 0.46]} color={C.lightGray} position={[x, 0.38, 0.03]} />)}
+        </Rigid>
         <BasketItems items={items} cart />
       </group>
 

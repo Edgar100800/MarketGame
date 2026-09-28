@@ -10,6 +10,7 @@ import { useGame, world } from '../game/state'
 import { groundY, stationPoint } from '../game/world'
 import type { Checkout, ItemKind, Machine, Producer, QuarterTurn, Shelf, Station } from '../game/types'
 import { PopIn } from './PopIn'
+import { Rigid } from '../models/Rigid'
 import { ZonePad } from './ZonePad'
 import { SHELF_WIDTH } from '../game/layout'
 import { turnRadians } from '../game/spatial'
@@ -57,13 +58,15 @@ function ShelfView({ s }: { s: Shelf }) {
     <>
       <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]} scale={STATION_SCALE}>
         <PopIn bornAt={s.bornAt}>
-          {s.model === 'crate' ? (
-            <Crate product={s.kind} cardboard count={s.stock} pad={false} />
-          ) : s.model === 'fridge' ? (
-            <Fridge count={s.stock} cap={s.cap} pad={false} />
-          ) : (
-            <ShelfModel product={s.kind} tiers={s.tiers} width={SHELF_WIDTH} count={s.stock} cap={s.cap} pad={false} />
-          )}
+          <Rigid>
+            {s.model === 'crate' ? (
+              <Crate product={s.kind} cardboard count={s.stock} pad={false} />
+            ) : s.model === 'fridge' ? (
+              <Fridge count={s.stock} cap={s.cap} pad={false} />
+            ) : (
+              <ShelfModel product={s.kind} tiers={s.tiers} width={SHELF_WIDTH} count={s.stock} cap={s.cap} pad={false} />
+            )}
+          </Rigid>
         </PopIn>
       </group>
       <ZonePad rect={s.pad} />
@@ -123,7 +126,9 @@ function CheckoutView({ s }: { s: Checkout }) {
       <group position={[s.pos.x, y, s.pos.z]} rotation={[0, turnRadians(s.turn), 0]} scale={STATION_SCALE}>
         <PopIn bornAt={s.bornAt}>
           {/* no cap on bills: the taller the pile, the stronger the sense of profit */}
-          <CheckoutModel bills={Math.ceil(s.cash / 5)} pad={false} />
+          <Rigid>
+            <CheckoutModel bills={Math.ceil(s.cash / 5)} pad={false} />
+          </Rigid>
         </PopIn>
       </group>
       <ZonePad rect={s.pad} />

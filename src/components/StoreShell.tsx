@@ -12,6 +12,7 @@ import { onGameEvent, useGame, world } from '../game/state'
 import { activeDoors, activeTrash, trashZone, unlockDef } from '../game/world'
 import { STATION_SCALE } from '../game/sizes'
 import type { AreaDef } from '../game/types'
+import { Rigid } from '../models/Rigid'
 import { PopIn } from './PopIn'
 import { floorY } from './StationView'
 import { ZonePad } from './ZonePad'
@@ -167,6 +168,7 @@ function Walls() {
         pieces.push([lo, r.x + r.w / 2])
         return (
           <RisingWall key={a.id} bornAt={bornAt}>
+            <Rigid>
             <group position={[0, SLAB, 0]}>
               {pieces
                 .filter(([p0, p1]) => p1 - p0 > 0.05)
@@ -180,6 +182,7 @@ function Walls() {
               ))}
               {a.enclose && <EnclosedWalls area={a} />}
             </group>
+            </Rigid>
           </RisingWall>
         )
       })}
@@ -286,11 +289,13 @@ export function StoreShell({ editing = false }: { editing?: boolean }) {
       {!editing && <TrashBins />}
       {/* farm decoration */}
       {/* L-shaped fence around the hen yard's back corner */}
-      <Fence length={4} position={[-12.5, 0, 11.5]} rotation={[0, Math.PI / 2, 0]} />
-      <Fence length={4} position={[-10.5, 0, 13.5]} />
-      <Bush position={[-17, 0, -4.5]} />
-      <Bush position={[17.5, 0, 6.5]} scale={0.8} />
-      <Bush position={[9, 0, 12]} scale={0.9} />
+      <Rigid>
+        <Fence length={4} position={[-12.5, 0, 11.5]} rotation={[0, Math.PI / 2, 0]} />
+        <Fence length={4} position={[-10.5, 0, 13.5]} />
+        <Bush position={[-17, 0, -4.5]} />
+        <Bush position={[17.5, 0, 6.5]} scale={0.8} />
+        <Bush position={[9, 0, 12]} scale={0.9} />
+      </Rigid>
       {/* movable decorations from the level (editor can rearrange them) */}
       {!editing && (world.level.deco ?? []).map((piece) => <DecoView key={piece.id} def={piece} />)}
       <OfficeSign />

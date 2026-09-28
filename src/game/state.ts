@@ -76,7 +76,7 @@ export function migrateUnlocks(unlocked: string[] | undefined, level: LevelDef) 
   return [...new Set(unlocked.filter((id) => known.has(id)))]
 }
 
-/** Debug flags: ?money=999 ?fast=5 ?unlock=all|id1,id2 ?reset=1 ?autoplay=1 ?sim=300 (pre-simulate N seconds with the bot) ?upgrades (open the panel) ?shot (wide HUD-less camera for share art; ?shot=clean also hides labels; ?cx ?cz ?dist ?pitch ?fov tune it) */
+/** Debug flags: ?money=999 ?fast=5 ?unlock=all|id1,id2 ?reset=1 ?autoplay=1 ?sim=300 (pre-simulate N seconds with the bot) ?upgrades (open the panel) ?perf (draw calls / FPS overlay) ?shot (wide HUD-less camera for share art; ?shot=clean also hides labels; ?cx ?cz ?dist ?pitch ?fov tune it) */
 export const debug = (() => {
   const p = params()
   return {
@@ -89,6 +89,8 @@ export const debug = (() => {
     autoplay: p.has('autoplay'),
     sim: Number(p.get('sim')) || 0,
     upgrades: p.has('upgrades'),
+    perf: p.has('perf'),
+    noRigid: p.has('norigid'),
     shot: p.has('shot'),
     shotClean: p.get('shot') === 'clean',
   }
@@ -190,13 +192,33 @@ export function onGameEvent(l: Listener) {
 }
 
 let saveTimer = 0
+let sigTimer = 0
 /** Called once per frame after `tick`. */
 export function sync(w: World, dt: number) {
   frameAnalytics(w)
   const events = w.events.splice(0)
   for (const e of events) for (const l of listeners) l(e)
 
+  // entity signatures and the objective are rebuilt at ~30 Hz (plenty for counters and states);
+  // money, version and completion are still pushed every frame
+  sigTimer += dt
   const prev = useGame.getState()
+  const full = sigTimer >= 1 / 30 || prev.version !== w.version
+  if (!full) {
+    if (prev.money !== w.money || prev.completed !== w.completed) useGame.setState({ money: w.money, completed: w.completed })
+  } else {
+    sigTimer = 0
+    syncEntities(w, prev)
+  }
+
+  saveTimer += dt
+  if (saveTimer > 2) {
+    saveTimer = 0
+    writeSave(w)
+  }
+}
+
+function syncEntities(w: World, prev: GameUI) {
   const next = signatures(w)
   const changed = Object.keys(next).length !== Object.keys(prev.sigs).length || Object.keys(next).some((k) => next[k] !== prev.sigs[k])
   const obj = objective(w)
@@ -209,10 +231,4 @@ export function sync(w: World, dt: number) {
       ...(changed ? { sigs: next } : {}),
       ...(objChanged ? { objective: obj } : {}),
     })
-
-  saveTimer += dt
-  if (saveTimer > 2) {
-    saveTimer = 0
-    writeSave(w)
-  }
 }
