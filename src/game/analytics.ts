@@ -1,4 +1,4 @@
-import posthog from 'posthog-js'
+import posthog, { type CaptureOptions } from 'posthog-js'
 import type { World } from './world'
 import { editedLevel, unlockTiers } from './editor'
 
@@ -25,8 +25,8 @@ let progress = { last_unlock: null as string | null, unlock_count: 0, tier: 0, m
 
 const secs = (ms: number) => Math.round(ms / 1000)
 
-function send(event: string, props: Record<string, unknown> = {}) {
-  posthog.capture(event, { level: LEVEL, ...progress, ...props })
+function send(event: string, props: Record<string, unknown> = {}, options?: CaptureOptions) {
+  posthog.capture(event, { level: LEVEL, ...progress, ...props }, options)
 }
 
 function readProgress(w: World) {
@@ -96,18 +96,13 @@ export function levelRestarted() {
   completedSent = false
 }
 
-/** Play time plus the progress the player left at, via sendBeacon (survives tab close). */
+/**
+ * Play time plus the progress the player left at. Sent through the SDK (so it carries device, OS
+ * and host like every other event) as an immediate beacon, which survives the tab closing.
+ */
 function flushEnd() {
   if (!ready || segmentMs < MIN_SEGMENT_MS) return
-  const props = {
-    level: LEVEL,
-    seconds: secs(segmentMs),
-    total_seconds: secs(playMs),
-    distinct_id: posthog.get_distinct_id(),
-    ...progress,
-  }
+  send('session_end', { seconds: secs(segmentMs), total_seconds: secs(playMs) }, { send_instantly: true, transport: 'sendBeacon' })
   segmentMs = 0
   lastBeat = 0
-  const body = JSON.stringify({ api_key: KEY, event: 'session_end', properties: props })
-  navigator.sendBeacon?.(`${HOST}/i/v0/e/`, new Blob([body], { type: 'application/json' }))
 }

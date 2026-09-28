@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Vector3, type PerspectiveCamera as Cam } from 'three'
 import { C } from '../materials/palette'
 import { Lighting } from './Lighting'
@@ -10,7 +10,7 @@ import { CAMERA_YAW } from '../game/systems/movement'
 import { autopilot } from '../game/systems/autopilot'
 import { StationView } from '../components/StationView'
 import { Customers, PlayerView, Workers } from '../components/Actors'
-import { FloatingTexts, FlyingItems, TutorialArrow, UnlockBursts } from '../components/Effects'
+import { FloatingTexts, FlyingItems, TargetPointer, TutorialArrow, UnlockBursts } from '../components/Effects'
 import { BuyZones, StoreShell } from '../components/StoreShell'
 import { buildStation } from '../game/world'
 import { PADS, STATION_SCALE } from '../game/sizes'
@@ -40,16 +40,22 @@ function GameLoop() {
   return null
 }
 
+/** Portrait screens see a narrow strip of the map: pull back so the width shown stays close to landscape. */
+const PORTRAIT_ASPECT = 0.8
+const MAX_PULL_BACK = 1.45
+
 /** Follows the player from a fixed angle, like the original. */
 function CameraRig() {
   const cam = useRef<Cam>(null)
   const look = useRef(new Vector3(world.player.pos.x, 0, world.player.pos.z))
+  const aspect = useThree((s) => s.size.width / s.size.height)
+  const offset = useMemo(() => OFFSET.clone().multiplyScalar(Math.min(MAX_PULL_BACK, Math.max(1, PORTRAIT_ASPECT / aspect))), [aspect])
   useFrame((_, dt) => {
     const c = cam.current
     if (!c) return
     const p = world.player.pos
     look.current.lerp(new Vector3(p.x, 0, p.z - 1), 1 - Math.exp(-dt * 6))
-    c.position.copy(look.current).add(OFFSET)
+    c.position.copy(look.current).add(offset)
     c.lookAt(look.current)
   })
   return <PerspectiveCamera ref={cam} makeDefault fov={32} position={[world.player.pos.x + OFFSET.x, OFFSET.y, world.player.pos.z + OFFSET.z]} />
@@ -318,6 +324,7 @@ export function Level1({ editing = false }: { editing?: boolean }) {
       {!editing && <FloatingTexts />}
       {!editing && <UnlockBursts />}
       {!editing && !debug.shot && <TutorialArrow />}
+      {!editing && !debug.shot && <TargetPointer />}
     </>
   )
 }

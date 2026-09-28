@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import type { Group } from 'three'
+import { Vector3, type Group } from 'three'
 import { C } from '../materials/palette'
 import { Ball, Box, Part } from '../models/parts'
 import { Product } from '../models/Products'
@@ -180,6 +180,42 @@ export function TutorialArrow() {
         <coneGeometry args={[0.55, 0.7, 4]} />
       </Part>
       <Box size={[0.4, 0.7, 0.4]} color={C.yellow} position={[0, 0.65, 0]} line={3} />
+    </group>
+  )
+}
+
+const projected = new Vector3()
+
+/**
+ * Flat yellow arrow floating at waist height next to the player (above counters and planters), pointing at the objective whenever the
+ * objective sits off screen (the bobbing arrow above it can't be seen then, mostly on phones held upright).
+ */
+export function TargetPointer() {
+  const target = useGame((s) => s.objective.target)
+  const ref = useRef<Group>(null)
+  useFrame(({ camera, clock }) => {
+    const g = ref.current
+    if (!g || !target) return
+    const p = world.player.pos
+    const dx = target.x - p.x
+    const dz = target.z - p.z
+    const d = Math.hypot(dx, dz)
+    // where the bobbing arrow over the objective shows; the top band of the screen is covered by the HUD
+    projected.set(target.x, floorY(target.x, target.z) + 2.6, target.z).project(camera)
+    const offScreen = projected.z > 1 || Math.abs(projected.x) > 0.85 || projected.y > 0.7 || projected.y < -0.9
+    g.visible = offScreen && d > 2
+    if (!g.visible) return
+    const reach = 1.8 + Math.sin(clock.elapsedTime * 6) * 0.15
+    g.position.set(p.x + (dx / d) * reach, floorY(p.x, p.z) + 1.1, p.z + (dz / d) * reach)
+    g.rotation.y = Math.atan2(dx, dz)
+  })
+  if (!target) return null
+  return (
+    <group ref={ref} visible={false}>
+      {/* cone lying flat, tip pointing along +z (towards the target after the yaw above) */}
+      <Part color={C.yellow} rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.35]} line={3}>
+        <coneGeometry args={[0.5, 0.8, 3]} />
+      </Part>
     </group>
   )
 }
