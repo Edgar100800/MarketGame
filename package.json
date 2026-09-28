@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:cf": "bun run build && bunx wrangler pages deploy dist --project-name minimart-lab --branch master --commit-dirty=true"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
