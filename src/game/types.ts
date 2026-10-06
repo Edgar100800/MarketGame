@@ -291,6 +291,12 @@ export type GameEvent =
   | { type: 'trash'; pos: Vec2 }
   | { type: 'float'; text: string; pos: Vec3 }
   | { type: 'unlock'; id: string; pos: Vec2 }
+  /** Sound-only cues: the visuals already come from the events above or from the state. */
+  | { type: 'pay'; progress: number; pos: Vec2 }
+  | { type: 'sale'; amount: number; pos: Vec2 }
+  | { type: 'cooked'; pos: Vec2 }
+  | { type: 'upgrade' }
+  | { type: 'complete' }
 
 export interface Objective {
   text: string

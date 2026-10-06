@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGame, world } from '../game/state'
 import { buyUpgrade, togglePause, upgradeRows, type UpgradeRow, type UpgradeTab } from '../game/upgrades'
 import { ProductIcon } from '../models/Icon2D'
+import { uiClick } from '../audio/sfx'
 
 const TABS: { id: UpgradeTab; label: string }[] = [
   { id: 'workers', label: 'Trabajadores' },
@@ -21,7 +22,10 @@ function Row({ row, money }: { row: UpgradeRow; money: number }) {
         <ProductIcon kind={row.icon} className="up-who-icon" />
         <span className="up-who-name">{row.title}</span>
         {row.workerId && (
-          <button className="up-pause" title={row.paused ? 'Reanudar' : 'Pausar'} onClick={() => togglePause(world, row.workerId!)}>
+          <button className="up-pause" title={row.paused ? 'Reanudar' : 'Pausar'} onClick={() => {
+            uiClick()
+            togglePause(world, row.workerId!)
+          }}>
             {row.paused ? 'Seguir' : 'Pausar'}
           </button>
         )}
@@ -58,12 +62,21 @@ export function UpgradesPanel({ onClose }: { onClose: () => void }) {
     <div className="up-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="up-panel">
         <div className="up-title">MEJORAS</div>
-        <button className="up-close" onClick={onClose}>
+        <button
+          className="up-close"
+          onClick={() => {
+            uiClick()
+            onClose()
+          }}
+        >
           ×
         </button>
         <div className="up-tabs">
           {TABS.map((t) => (
-            <button key={t.id} className={`up-tab up-tab-${t.id} ${tab === t.id ? 'on' : ''}`} onClick={() => setTab(t.id)}>
+            <button key={t.id} className={`up-tab up-tab-${t.id} ${tab === t.id ? 'on' : ''}`} onClick={() => {
+              uiClick()
+              setTab(t.id)
+            }}>
               {t.label}
             </button>
           ))}

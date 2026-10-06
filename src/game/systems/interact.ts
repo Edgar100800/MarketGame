@@ -124,6 +124,7 @@ export function interact(w: World, dt: number) {
       w.money -= step
       w.zonePaid[id] += step
       w.events.push({ type: 'fly', kind: 'money', from: [p.pos.x, 1.2 * CHARACTER_SCALE, p.pos.z], to: { type: 'point', p: [def.zone.x, 0.1, def.zone.z] } })
+      w.events.push({ type: 'pay', progress: w.zonePaid[id] / def.price, pos: def.zone })
       p.payTimer += BUY_INTERVAL
     }
     if (w.zonePaid[id] >= def.price) {

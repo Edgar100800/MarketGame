@@ -18,6 +18,7 @@ export function tick(w: World, input: Input, dt: number) {
   // the level ends the moment the final unlock (the next branch, outside the door) is bought
   if (!w.completed && w.level.finalUnlock !== undefined && w.unlocked.includes(w.level.finalUnlock)) {
     w.completed = true
+    w.events.push({ type: 'complete' })
     w.version++
   }
 }

@@ -34,6 +34,7 @@ export function runMachines(w: World, dt: number) {
     m.progress += dt / m.recipe.time
     if (m.progress >= 1) {
       m.output += m.recipe.n
+      w.events.push({ type: 'cooked', pos: m.pos })
       m.running = false
       m.progress = 0
     }

@@ -5,6 +5,7 @@ import { Level1 } from './scenes/Level1'
 import { Hud, Joystick } from './components/Hud'
 import { debug, saveNow } from './game/state'
 import { PromoOverlay } from './components/Recorder'
+import { startSound } from './audio/sfx'
 
 export default function App() {
   useEffect(() => {
@@ -18,6 +19,7 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [])
+  useEffect(startSound, [])
   return (
     <>
       <Canvas

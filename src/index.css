@@ -1031,3 +1031,25 @@ body,
     transform: scale(1.08);
   }
 }
+
+.hud-sound {
+  position: fixed;
+  top: 62px;
+  right: 92px;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 25px;
+  padding: 0;
+  border-radius: 10px;
+  border: 2px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.hud-sound.off {
+  background: #e9e4dc;
+  opacity: 0.8;
+}

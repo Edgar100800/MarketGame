@@ -290,6 +290,7 @@ export function updateCustomers(w: World, dt: number) {
         const money = stationPoint(check, 0.9, 0)
         w.events.push({ type: 'fly', kind: 'money', from: [head.pos.x, 1.2 * CHARACTER_SCALE, head.pos.z], to: { type: 'point', p: [money.x, 0.9, money.z] } })
         w.events.push({ type: 'float', text: `+$${amount}`, pos: [check.pos.x, 2.2, check.pos.z] })
+        w.events.push({ type: 'sale', amount, pos: check.pos })
         check.queue.shift()
         leave(w, head)
       }

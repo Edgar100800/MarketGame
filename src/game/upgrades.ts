@@ -147,6 +147,7 @@ export function buyUpgrade(w: World, key: string): boolean {
   w.money -= s.cost
   w.upgrades[key] = level(w, key) + 1
   applyUpgrades(w)
+  w.events.push({ type: 'upgrade' })
   w.version++
   return true
 }
