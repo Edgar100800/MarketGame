@@ -1053,3 +1053,129 @@ body,
   background: #e9e4dc;
   opacity: 0.8;
 }
+
+.snd-panel {
+  position: fixed;
+  top: 94px;
+  right: 92px;
+  z-index: 70;
+  width: 230px;
+  padding: 10px 12px 9px;
+  border-radius: 14px;
+  border: 3px solid var(--ink);
+  background: rgba(250, 248, 237, 0.97);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.snd-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 17px;
+  margin-bottom: 8px;
+}
+
+.snd-label {
+  font-size: 13px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  background: #ffd23f;
+  border: 2px solid var(--ink);
+}
+
+.snd-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.snd-mute {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  flex: none;
+  border-radius: 9px;
+  border: 2px solid var(--ink);
+  background: #86db55;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.snd-mute.off {
+  background: #e9e4dc;
+}
+
+.snd-slider {
+  flex: 1;
+  min-width: 0;
+  height: 12px;
+  appearance: none;
+  border-radius: 8px;
+  border: 2px solid var(--ink);
+  background: linear-gradient(to right, #86db55 var(--fill), #fff var(--fill));
+  cursor: pointer;
+  touch-action: none;
+}
+
+.snd-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: #ffd23f;
+}
+
+.snd-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: #ffd23f;
+}
+
+.snd-pct {
+  width: 38px;
+  text-align: right;
+  font-size: 14px;
+}
+
+.snd-meter {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 26px;
+  margin-top: 10px;
+  padding: 3px 4px;
+  border-radius: 8px;
+  background: #2b2d33;
+}
+
+.snd-meter span {
+  flex: 1;
+  border-radius: 2px;
+  background: #4a4d55;
+  transition: background 60ms;
+}
+
+.snd-meter span.on {
+  background: #86db55;
+}
+
+.snd-meter span.on.warm {
+  background: #ffd23f;
+}
+
+.snd-meter span.on.hot {
+  background: #ff5a4e;
+}
+
+.snd-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  opacity: 0.7;
+  text-align: center;
+}

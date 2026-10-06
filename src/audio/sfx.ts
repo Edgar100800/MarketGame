@@ -6,6 +6,9 @@ import type { GameEvent, Vec2, Vec3 } from '../game/types'
 // pentatonic scale (stack height, pickup streak, payment progress) so chains feel rewarding.
 
 const MUTE_KEY = 'minimart.muted'
+const VOLUME_KEY = 'minimart.volume'
+/** Master gain at 100% volume. */
+const MAX_GAIN = 0.8
 /** Sounds from workers/customers fade out at this distance from the player. */
 const HEAR_RADIUS = 16
 
@@ -20,7 +23,16 @@ function penta(base: number, step: number) {
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let noise: AudioBuffer | null = null
-let muted = typeof localStorage !== 'undefined' && localStorage.getItem(MUTE_KEY) === '1'
+let analyser: AnalyserNode | null = null
+let meterData: Float32Array<ArrayBuffer> | null = null
+const stored = typeof localStorage !== 'undefined' ? localStorage : null
+let muted = stored?.getItem(MUTE_KEY) === '1'
+let volume = Math.min(1, Math.max(0, Number(stored?.getItem(VOLUME_KEY) ?? 0.7) || 0))
+
+/** Squared slider value: loudness feels linear along the slider. */
+function targetGain() {
+  return muted ? 0 : volume * volume * MAX_GAIN
+}
 const lastPlayed: Record<string, number> = {}
 
 function ensureContext() {
@@ -31,9 +43,14 @@ function ensureContext() {
   const comp = ctx.createDynamicsCompressor()
   comp.threshold.value = -14
   comp.ratio.value = 6
-  comp.connect(ctx.destination)
+  // the analyser taps the final mix for the level meter in the sound panel
+  analyser = ctx.createAnalyser()
+  analyser.fftSize = 512
+  meterData = new Float32Array(analyser.fftSize)
+  comp.connect(analyser)
+  analyser.connect(ctx.destination)
   master = ctx.createGain()
-  master.gain.value = muted ? 0 : 0.55
+  master.gain.value = targetGain()
   master.connect(comp)
   noise = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate)
   const data = noise.getChannelData(0)
@@ -108,18 +125,28 @@ function nearness(p: Vec2 | Vec3) {
 
 // --- the sound palette -------------------------------------------------------
 
-/** Bubbly pop when an item lands on the player's stack; higher the taller the stack. */
+// Pickup / place live above ~700 Hz: lower notes vanish on laptop and phone speakers.
+
+/** Bubbly upward "bloop" when an item lands on the player's stack; higher the taller the stack. */
 function pickup(height: number) {
-  const f = penta(392, height)
-  tone({ freq: f * 0.7, to: f * 1.5, type: 'sine', dur: 0.09, vol: 0.32 })
-  tone({ freq: f * 2, type: 'triangle', dur: 0.05, vol: 0.06, delay: 0.015 })
+  const f = penta(698, height)
+  tone({ freq: f * 0.75, to: f * 1.5, type: 'triangle', dur: 0.1, vol: 0.4 })
+  tone({ freq: f * 1.5, to: f * 3, type: 'sine', dur: 0.08, vol: 0.14, delay: 0.01 })
+  hiss({ dur: 0.025, vol: 0.08, freq: 4000, q: 1.5 })
 }
 
-/** Woody "tok" when the player places an item (shelf, machine, animal feed). */
+/** Woody "tok" + downward blip when the player places an item (shelf, machine, animal feed). */
 function place(height: number) {
-  const f = penta(330, height)
-  tone({ freq: f * 1.4, to: f * 0.8, type: 'triangle', dur: 0.08, vol: 0.3 })
-  hiss({ dur: 0.03, vol: 0.06, freq: 2400, q: 2 })
+  const f = penta(880, height)
+  tone({ freq: f * 1.3, to: f * 0.7, type: 'triangle', dur: 0.09, vol: 0.38 })
+  tone({ freq: f * 2.6, to: f * 1.4, type: 'sine', dur: 0.05, vol: 0.1 })
+  hiss({ dur: 0.04, vol: 0.14, freq: 1800, q: 3 })
+}
+
+/** Soft scuff; alternate feet get slightly different filters so the rhythm reads as left/right. */
+function footstep(foot: number) {
+  hiss({ dur: 0.05, vol: 0.09, freq: foot ? 1300 : 1100, to: 500, q: 1.2 })
+  tone({ freq: foot ? 190 : 170, to: 110, type: 'sine', dur: 0.05, vol: 0.08 })
 }
 
 /** Bright two-note coin; the streak walks it up the scale. */
@@ -200,8 +227,35 @@ export function uiClick() {
 
 // --- wiring ------------------------------------------------------------------
 
+/** Seconds between steps; matches the Character walk cycle (phase += dt * 10, two steps per turn). */
+const STEP_TIME = Math.PI / 10
+
+/** Footsteps have no game event: poll the player each frame while the context is live. */
+function stepLoop() {
+  let raf = 0
+  let last = performance.now()
+  let acc = 0
+  let foot = 0
+  const frame = (now: number) => {
+    const dt = Math.min(0.1, (now - last) / 1000)
+    last = now
+    if (world.player.moving && ready()) {
+      acc += dt
+      if (acc >= STEP_TIME) {
+        acc -= STEP_TIME
+        foot ^= 1
+        footstep(foot)
+      }
+    } else acc = STEP_TIME * 0.6 // first step lands right after starting to walk
+    raf = requestAnimationFrame(frame)
+  }
+  raf = requestAnimationFrame(frame)
+  return () => cancelAnimationFrame(raf)
+}
+
+/** Several sim sub-steps can run before sounds play, so the player may have moved a little since the throw. */
 function isPlayerAt(p: Vec3) {
-  return Math.hypot(p[0] - world.player.pos.x, p[2] - world.player.pos.z) < 0.3
+  return Math.hypot(p[0] - world.player.pos.x, p[2] - world.player.pos.z) < 0.8
 }
 
 function play(e: GameEvent) {
@@ -262,7 +316,35 @@ export function isMuted() {
 export function setMuted(m: boolean) {
   muted = m
   localStorage.setItem(MUTE_KEY, m ? '1' : '0')
-  if (ctx && master) master.gain.setTargetAtTime(m ? 0 : 0.55, ctx.currentTime, 0.02)
+  if (ctx && master) master.gain.setTargetAtTime(targetGain(), ctx.currentTime, 0.02)
+}
+
+export function getVolume() {
+  return volume
+}
+
+/** 0..1 slider value. Moving it above zero also unmutes. */
+export function setVolume(v: number) {
+  volume = Math.min(1, Math.max(0, v))
+  localStorage.setItem(VOLUME_KEY, String(volume))
+  if (volume > 0 && muted) setMuted(false)
+  else if (ctx && master) master.gain.setTargetAtTime(targetGain(), ctx.currentTime, 0.02)
+}
+
+/** Sample of the game's typical sounds, so the player hears the chosen volume. */
+export function previewSound() {
+  if (!ready() || !throttle('preview', 0.12)) return
+  pickup(2)
+  coin(3)
+}
+
+/** Peak level of the final mix, 0..1 (for the meter). */
+export function outputLevel() {
+  if (!analyser || !meterData || !ctx || ctx.state !== 'running') return 0
+  analyser.getFloatTimeDomainData(meterData)
+  let peak = 0
+  for (const v of meterData) peak = Math.max(peak, Math.abs(v))
+  return Math.min(1, peak)
 }
 
 /** Hooks game events to sounds. Browsers only allow audio after a user gesture, so the context starts on the first input. */
@@ -270,7 +352,13 @@ export function startSound() {
   if (debug.shot || debug.record) return () => {}
   const unlockAudio = () => {
     const c = ensureContext()
-    if (c && c.state !== 'running') void c.resume()
+    if (!c || c.state === 'running') return
+    void c.resume()
+    // iOS Safari only unlocks output after something plays inside the gesture
+    const blip = c.createBufferSource()
+    blip.buffer = c.createBuffer(1, 1, c.sampleRate)
+    blip.connect(c.destination)
+    blip.start()
   }
   const onVisibility = () => {
     if (!ctx) return
@@ -280,12 +368,14 @@ export function startSound() {
   const off = onGameEvent((e) => {
     if (ready()) play(e)
   })
+  const stopSteps = stepLoop()
   window.addEventListener('pointerdown', unlockAudio)
   window.addEventListener('keydown', unlockAudio)
   window.addEventListener('touchend', unlockAudio)
   document.addEventListener('visibilitychange', onVisibility)
   return () => {
     off()
+    stopSteps()
     window.removeEventListener('pointerdown', unlockAudio)
     window.removeEventListener('keydown', unlockAudio)
     window.removeEventListener('touchend', unlockAudio)
