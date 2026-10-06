@@ -347,12 +347,59 @@ export function outputLevel() {
   return Math.min(1, peak)
 }
 
+/** Tiny silent WAV, looped by an <audio> element on older iOS (see unlockIOS). */
+function silentWav() {
+  const rate = 8000
+  const n = 800
+  const buf = new ArrayBuffer(44 + n)
+  const v = new DataView(buf)
+  const str = (o: number, t: string) => [...t].forEach((ch, i) => v.setUint8(o + i, ch.charCodeAt(0)))
+  str(0, 'RIFF')
+  v.setUint32(4, 36 + n, true)
+  str(8, 'WAVEfmt ')
+  v.setUint32(16, 16, true)
+  v.setUint16(20, 1, true)
+  v.setUint16(22, 1, true)
+  v.setUint32(24, rate, true)
+  v.setUint32(28, rate, true)
+  v.setUint16(32, 1, true)
+  v.setUint16(34, 8, true)
+  str(36, 'data')
+  v.setUint32(40, n, true)
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128)
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
+}
+
+let silentLoop: HTMLAudioElement | null = null
+
+/**
+ * iOS treats Web Audio as "ambient": the ring/silent switch mutes it even with the volume up.
+ * Safari 17+ lets the page ask for the "playback" category (like video players); older iOS
+ * switches category when an <audio> element is playing, so a silent one loops in the background.
+ */
+function unlockIOS() {
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+  if (session) {
+    if (session.type !== 'playback') session.type = 'playback'
+    return
+  }
+  if (!/iPad|iPhone|iPod/.test(navigator.userAgent) && !(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return
+  if (!silentLoop) {
+    silentLoop = new Audio(silentWav())
+    silentLoop.loop = true
+    silentLoop.setAttribute('playsinline', '')
+  }
+  if (silentLoop.paused) void silentLoop.play().catch(() => {})
+}
+
 /** Hooks game events to sounds. Browsers only allow audio after a user gesture, so the context starts on the first input. */
 export function startSound() {
   if (debug.shot || debug.record) return () => {}
   const unlockAudio = () => {
     const c = ensureContext()
-    if (!c || c.state === 'running') return
+    if (!c) return
+    unlockIOS()
+    if (c.state === 'running') return
     void c.resume()
     // iOS Safari only unlocks output after something plays inside the gesture
     const blip = c.createBufferSource()
@@ -362,23 +409,23 @@ export function startSound() {
   }
   const onVisibility = () => {
     if (!ctx) return
-    if (document.visibilityState === 'hidden') void ctx.suspend()
-    else void ctx.resume()
+    if (document.visibilityState === 'hidden') {
+      void ctx.suspend()
+      silentLoop?.pause()
+    } else void ctx.resume()
   }
   const off = onGameEvent((e) => {
     if (ready()) play(e)
   })
   const stopSteps = stepLoop()
-  window.addEventListener('pointerdown', unlockAudio)
-  window.addEventListener('keydown', unlockAudio)
-  window.addEventListener('touchend', unlockAudio)
+  // Safari only unlocks audio on "activation" events (touchend, click, keydown), not pointerdown/touchstart
+  const unlockEvents = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'] as const
+  for (const ev of unlockEvents) window.addEventListener(ev, unlockAudio, { capture: true })
   document.addEventListener('visibilitychange', onVisibility)
   return () => {
     off()
     stopSteps()
-    window.removeEventListener('pointerdown', unlockAudio)
-    window.removeEventListener('keydown', unlockAudio)
-    window.removeEventListener('touchend', unlockAudio)
+    for (const ev of unlockEvents) window.removeEventListener(ev, unlockAudio, { capture: true })
     document.removeEventListener('visibilitychange', onVisibility)
   }
 }

@@ -19,6 +19,12 @@ body,
   height: 100%;
   overflow: hidden;
   background: #b9ef62;
+  /* game, not a page: no text selection, long-press callouts, pull-to-refresh or rubber-banding */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
 
 .tabs {
