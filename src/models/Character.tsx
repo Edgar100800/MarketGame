@@ -27,11 +27,21 @@ type Props = ThreeElements['group'] & {
   walking?: boolean
   /** Freezes the walk cycle at this phase (radians). For galleries and screenshots. */
   pose?: number
+  /** Extra pieces stuck to the torso (torso space: chest at y 0.26, front +z), e.g. a sack on the back. */
+  wear?: ReactNode
+  /** Extra pieces stuck to the head (head space, center at 0, radius HEAD_R), e.g. a robber mask. */
+  face?: ReactNode
+  /** Tool gripped in the right hand, modeled pointing up (+y) from the grip; the arm raises it forward. */
+  hold?: ReactNode
+  /** With `hold`: keeps chopping the tool down in front, like swinging a net. */
+  swing?: boolean
+  /** Walk cycle speed multiplier (running thief > 1). */
+  pace?: number
 }
 
 // Chibi proportions (feet at y = 0, faces +z): big head, short torso, stubby limbs.
 const HIP_Y = 0.46
-const HEAD_R = 0.3
+export const HEAD_R = 0.3
 const HEAD_Y = 0.82 // relative to the hips
 const SHOULDER_Y = 0.44
 const SHOULDER_X = 0.27
@@ -269,7 +279,7 @@ function Leg({ side, color, limb }: { side: number; color: string; limb: Limb })
 }
 
 /** Upper arm + elbow + forearm (sleeve color) + hand (body color). */
-function Arm({ side, color, sleeve = color, limb }: { side: number; color: string; sleeve?: string; limb: Limb }) {
+function Arm({ side, color, sleeve = color, limb, hold }: { side: number; color: string; sleeve?: string; limb: Limb; hold?: ReactNode }) {
   return (
     <group ref={(g) => void (limb.root = g)} position={[side * SHOULDER_X, SHOULDER_Y, 0]}>
       <Rigid>
@@ -282,6 +292,8 @@ function Arm({ side, color, sleeve = color, limb }: { side: number; color: strin
           <Capsule r={0.066} len={0.08} color={sleeve} position={[0, -0.08, 0]} line={LINE_MID} />
           <Ball r={0.078} color={color} position={[0, -0.18, 0]} line={LINE_FINE} />
         </Rigid>
+        {/* the tool continues the forearm: its +y runs along the arm's -y */}
+        {hold && <group position={[0, -0.18, 0]} rotation={[Math.PI, 0, 0]}>{hold}</group>}
       </group>
     </group>
   )
@@ -292,7 +304,7 @@ function Arm({ side, color, sleeve = color, limb }: { side: number; color: strin
  * Procedural walk: hips swing the thighs, knees bend while the leg is lifted,
  * arms swing against the legs with bent elbows, hips bob and the torso twists.
  */
-export function Character({ color, hat = 'none', hatColor = C.white, tie = false, vest, top, buttons, carry, push, walking = false, pose, ...props }: Props) {
+export function Character({ color, hat = 'none', hatColor = C.white, tie = false, vest, top, buttons, carry, push, walking = false, pose, wear, face, hold, swing = false, pace = 1, ...props }: Props) {
   const hips = useRef<Group>(null)
   const torso = useRef<Group>(null)
   const legs = useMemo<[Limb, Limb]>(() => [{ root: null, joint: null }, { root: null, joint: null }], [])
@@ -305,7 +317,7 @@ export function Character({ color, hat = 'none', hatColor = C.white, tie = false
     const frozen = pose !== undefined
     // blend idle <-> walk so the pose never snaps
     st.walk += ((frozen || walking ? 1 : 0) - st.walk) * Math.min(1, dt * 10)
-    st.phase = frozen ? pose : st.phase + dt * 10 * st.walk
+    st.phase = frozen ? pose : st.phase + dt * 10 * pace * st.walk
     const w = st.walk
     const f = st.phase
     const t = clock.elapsedTime
@@ -321,6 +333,13 @@ export function Character({ color, hat = 'none', hatColor = C.white, tie = false
       const side = i ? 1 : -1
       const ph = f + (i ? Math.PI : 0)
       if (!arm.root || !arm.joint) return
+      if (hold && side === 1) {
+        // tool arm: raised forward; swinging chops it down and back up twice a second
+        const chop = swing ? Math.pow(Math.max(0, Math.sin(t * 12)), 3) : 0
+        arm.root.rotation.set(-2.3 + chop * 1.5 + Math.sin(f) * 0.08 * w, 0, -0.1)
+        arm.joint.rotation.x = -0.25
+        return
+      }
        if (push) {
          // Both hands stay on the cart handle while the legs keep walking.
          arm.root.rotation.set(-0.82 + Math.sin(f * 2) * 0.025 * w, 0, -side * 0.08)
@@ -355,13 +374,15 @@ export function Character({ color, hat = 'none', hatColor = C.white, tie = false
             {buttons && <ChestButtons color={buttons} />}
             {tie && <NeckTie />}
             {vest && <Vest color={vest} />}
+            {wear}
             <group position={[0, HEAD_Y, 0]}>
               <Ball r={HEAD_R} color={color} line={LINE_BOLD} />
+              {face}
               <Hat kind={hat} color={hatColor} />
             </group>
           </Rigid>
           <Arm side={-1} color={color} sleeve={top} limb={arms[0]} />
-          <Arm side={1} color={color} sleeve={top} limb={arms[1]} />
+          <Arm side={1} color={color} sleeve={top} limb={arms[1]} hold={hold} />
           {carry && <group position={[0, 0.2, 0.42]}>{carry}</group>}
         </group>
       </group>

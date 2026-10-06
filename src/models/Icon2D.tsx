@@ -170,6 +170,74 @@ const DRAW: Record<ProductKind, Draw> = {
     for (const [x, y] of [[50, 56], [76, 60], [58, 78], [78, 80]] as const) blob(g, C.jam, () => g.arc(x, y, 7, 0, Math.PI * 2))
     for (const [x, y] of [[64, 48], [44, 70]] as const) blob(g, C.leafDark, () => g.ellipse(x, y, 5, 3, 0.6, 0, Math.PI * 2))
   },
+  juice: (g) => {
+    blob(g, C.juice, () => {
+      g.moveTo(52, 16)
+      g.lineTo(76, 16)
+      g.lineTo(76, 34)
+      g.quadraticCurveTo(96, 40, 96, 58)
+      g.lineTo(96, 112)
+      g.lineTo(32, 112)
+      g.lineTo(32, 58)
+      g.quadraticCurveTo(32, 40, 52, 34)
+      g.closePath()
+    })
+    blob(g, C.leaf, () => g.roundRect(48, 8, 32, 14, 5))
+    blob(g, C.white, () => g.rect(32, 64, 64, 30))
+    blob(g, C.tomato, () => g.arc(64, 79, 9, 0, Math.PI * 2))
+    shine(g, 44, 52, 5, 9)
+  },
+  butter: (g) => {
+    blob(g, C.cream, () => g.roundRect(14, 50, 76, 48, 8))
+    blob(g, C.butter, () => g.roundRect(80, 46, 34, 52, 8))
+    blob(g, C.milkBand, () => g.rect(30, 64, 40, 18))
+  },
+  iceCream: (g) => {
+    blob(g, C.cone, () => {
+      g.moveTo(36, 62)
+      g.lineTo(92, 62)
+      g.lineTo(64, 120)
+      g.closePath()
+    })
+    g.lineWidth = 4
+    g.strokeStyle = C.bread
+    for (const x of [50, 64, 78]) {
+      g.beginPath()
+      g.moveTo(x, 68)
+      g.lineTo(x - 8, 82)
+      g.stroke()
+    }
+    blob(g, C.iceCream, () => g.arc(64, 54, 30, Math.PI * 0.95, Math.PI * 2.05))
+    blob(g, C.cream, () => g.ellipse(64, 30, 18, 13, 0, 0, Math.PI * 2))
+    blob(g, C.strawberry, () => g.arc(64, 14, 7, 0, Math.PI * 2))
+  },
+  ketchup: (g) => {
+    blob(g, C.white, () => {
+      g.moveTo(58, 6)
+      g.lineTo(70, 6)
+      g.lineTo(76, 28)
+      g.lineTo(52, 28)
+      g.closePath()
+    })
+    blob(g, C.white, () => g.roundRect(42, 24, 44, 14, 5))
+    blob(g, C.ketchup, () => g.roundRect(34, 36, 60, 78, 18))
+    blob(g, C.white, () => g.rect(34, 62, 60, 28))
+    blob(g, C.tomato, () => g.arc(64, 76, 9, 0, Math.PI * 2))
+  },
+  pancakes: (g) => {
+    blob(g, C.white, () => g.ellipse(64, 100, 54, 14, 0, 0, Math.PI * 2))
+    for (const y of [86, 70, 54]) blob(g, C.pancake, () => g.roundRect(22, y - 10, 84, 20, 10))
+    blob(g, C.honey, () => {
+      g.moveTo(30, 42)
+      g.lineTo(98, 42)
+      g.lineTo(98, 56)
+      g.quadraticCurveTo(92, 72, 86, 56)
+      g.lineTo(42, 56)
+      g.quadraticCurveTo(36, 66, 30, 56)
+      g.closePath()
+    })
+    blob(g, C.butter, () => g.roundRect(52, 28, 24, 16, 4))
+  },
 }
 
 const cache = new Map<ProductKind, Texture>()

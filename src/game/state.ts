@@ -76,7 +76,7 @@ export function migrateUnlocks(unlocked: string[] | undefined, level: LevelDef) 
   return [...new Set(unlocked.filter((id) => known.has(id)))]
 }
 
-/** Debug flags: ?money=999 ?fast=5 ?unlock=all|id1,id2 ?reset=1 ?autoplay=1 ?sim=300 (pre-simulate N seconds with the bot) ?upgrades (open the panel) ?perf (draw calls / FPS overlay) ?shot (wide HUD-less camera for share art; ?shot=clean also hides labels; ?cx ?cz ?dist ?pitch ?fov tune it) */
+/** Debug flags: ?money=999 ?fast=5 ?unlock=all|id1,id2 ?reset=1 ?autoplay=1 ?sim=300 (pre-simulate N seconds with the bot) ?upgrades (open the panel) ?perf (draw calls / FPS overlay) ?record (frame-stepped promo capture, see scripts/record-promo.ts) ?shot (wide HUD-less camera for share art; ?shot=clean also hides labels; ?cx ?cz ?dist ?pitch ?fov tune it) */
 export const debug = (() => {
   const p = params()
   return {
@@ -92,6 +92,9 @@ export const debug = (() => {
     perf: p.has('perf'),
     noRigid: p.has('norigid'),
     shot: p.has('shot'),
+    record: p.has('record'),
+    /** ?fill: every shelf starts full (promo footage) */
+    fill: p.has('fill'),
     shotClean: p.get('shot') === 'clean',
   }
 })()
@@ -111,6 +114,7 @@ function makeWorld(restoreRuntime = true): World {
   const debugOverridesProgress = debug.money !== undefined || debug.unlockAll || debug.unlockList !== null
   if (restoreRuntime && !debugOverridesProgress) restoreWorld(w, save?.runtime)
   if (debug.unlockAll) unlockAll(w)
+  if (debug.fill) for (const s of w.stations) if (s.type === 'shelf') s.stock = s.cap
   if (debug.sim) {
     const bot = { x: 0, y: 0 }
     for (let t = 0; t < debug.sim; t += 1 / 30) {

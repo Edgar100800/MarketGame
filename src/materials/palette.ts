@@ -40,6 +40,14 @@ export const C = {
   strawberry: '#E8485C',
   honey: '#F0A828',
   jam: '#A83240',
+  juice: '#FFB13B',
+  butter: '#FFE27A',
+  ketchup: '#D62A22',
+  iceCream: '#FFB3C8',
+  cone: '#E3A15A',
+  pancake: '#E9A552',
+  chrome: '#DDE4E8',
+  asphalt: '#5E656C',
 
   money: '#86DB55',
   moneyDark: '#4E9E2F',
@@ -76,3 +84,6 @@ export const CASHIER_COLOR = '#3D4A6B'
 // Random looks for incoming customers: hair colors for hair heads, vivid cloths for hats.
 export const HAIR_COLORS = ['#5C3A21', '#2B2B2B', '#E8C46B', '#C96A2E', '#E866D8']
 export const CLOTH_COLORS = ['#4AA8FF', '#E0574F', '#5ED36B', '#F5D64A', '#F0F0F0']
+
+// Body colors for drive-up cars and motorbikes.
+export const VEHICLE_COLORS = ['#E0574F', '#4AA8FF', '#F5D64A', '#5ED36B', '#F28A3B', '#F0F0F0', '#A77BEA']

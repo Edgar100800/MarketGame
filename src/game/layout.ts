@@ -4,7 +4,7 @@ import type { ShelfModel, Vec3 } from './types'
 // Where each item sits on a shelf or crate, shared by the logic (flying items aim at
 // the exact slot) and the models (items fill the slots in the same order).
 
-export type SlotKind = 'tomato' | 'egg' | 'bread' | 'wheat' | 'can' | 'milk' | 'money' | 'tomatoCan' | 'flour' | 'cheese' | 'cake' | 'strawberry' | 'honey' | 'apple' | 'jam' | 'pizza'
+export type SlotKind = 'tomato' | 'egg' | 'bread' | 'wheat' | 'can' | 'milk' | 'money' | 'tomatoCan' | 'flour' | 'cheese' | 'cake' | 'strawberry' | 'honey' | 'apple' | 'jam' | 'pizza' | 'juice' | 'butter' | 'iceCream' | 'ketchup' | 'pancakes'
 
 /** Every product picks one of the three standard spacing tiers instead of a magic number. */
 const SLOT_TIER: Record<SlotKind, SlotTier> = {
@@ -24,6 +24,11 @@ const SLOT_TIER: Record<SlotKind, SlotTier> = {
   apple: 'M',
   jam: 'M',
   pizza: 'L',
+  juice: 'S',
+  butter: 'M',
+  iceCream: 'S',
+  ketchup: 'S',
+  pancakes: 'L',
 }
 
 /** Footprint of one item, used as spacing in crates and legacy shelves. */

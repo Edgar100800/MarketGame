@@ -176,6 +176,72 @@ export function Pizza(props: GroupProps) {
   )
 }
 
+/** Juice bottle: orange apple juice with a green cap and an apple dot on the label. */
+export function Juice(props: GroupProps) {
+  return (
+    <group {...props}>
+      <Cyl r={0.1} h={0.24} color={C.juice} position={[0, 0.12, 0]} />
+      <Cyl r={0.06} rTop={0.045} h={0.07} color={C.juice} position={[0, 0.275, 0]} outline={false} />
+      <Cyl r={0.102} h={0.09} color={C.white} position={[0, 0.12, 0]} outline={false} />
+      <Ball r={0.03} color={C.tomato} position={[0, 0.12, 0.095]} outline={false} />
+      <Cyl r={0.05} h={0.04} color={C.leaf} position={[0, 0.33, 0]} />
+    </group>
+  )
+}
+
+/** Butter block: wrapped in paper with the yellow stick peeking out. */
+export function Butter(props: GroupProps) {
+  return (
+    <group {...props}>
+      <RBox size={[0.3, 0.12, 0.18]} radius={0.03} color={C.cream} position={[0, 0.06, 0]} />
+      <RBox size={[0.1, 0.11, 0.16]} radius={0.03} color={C.butter} position={[0.14, 0.065, 0]} />
+      <Box size={[0.12, 0.005, 0.1]} color={C.milkBand} position={[-0.04, 0.122, 0]} outline={false} />
+    </group>
+  )
+}
+
+/** Ice cream cone: waffle cone with a pink strawberry scoop and a cream swirl. */
+export function IceCream(props: GroupProps) {
+  return (
+    <group {...props}>
+      <Cyl r={0.1} rTop={0.11} h={0.03} color={C.cone} position={[0, 0.2, 0]} outline={false} />
+      <Part color={C.cone} position={[0, 0.1, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[0.1, 0.2, 10]} />
+      </Part>
+      <Ball r={0.12} color={C.iceCream} position={[0, 0.27, 0]} />
+      <Ball r={0.07} color={C.cream} position={[0, 0.37, 0]} scale={[1, 0.8, 1]} />
+      <Ball r={0.025} color={C.strawberry} position={[0, 0.43, 0]} outline={false} />
+    </group>
+  )
+}
+
+/** Ketchup squeeze bottle: red body, white cap with a pointy nozzle. */
+export function Ketchup(props: GroupProps) {
+  return (
+    <group {...props}>
+      <RBox size={[0.16, 0.24, 0.11]} radius={0.05} color={C.ketchup} position={[0, 0.12, 0]} />
+      <Box size={[0.162, 0.08, 0.112]} color={C.white} position={[0, 0.12, 0]} outline={false} />
+      <Ball r={0.025} color={C.tomato} position={[0, 0.12, 0.057]} outline={false} />
+      <Cyl r={0.06} h={0.05} color={C.white} position={[0, 0.265, 0]} />
+      <Cyl r={0.025} rTop={0.008} h={0.06} color={C.white} position={[0, 0.32, 0]} outline={false} />
+    </group>
+  )
+}
+
+/** Pancake stack: three pancakes, a butter pat and honey dripping down. */
+export function Pancakes(props: GroupProps) {
+  return (
+    <group {...props}>
+      <Cyl r={0.2} h={0.02} color={C.white} position={[0, 0.01, 0]} />
+      {[0, 1, 2].map((i) => (
+        <Cyl key={i} r={0.15 - i * 0.008} h={0.045} color={C.pancake} position={[0, 0.045 + i * 0.05, 0]} />
+      ))}
+      <Cyl r={0.12} h={0.015} color={C.honey} position={[0, 0.17, 0]} outline={false} />
+      <RBox size={[0.07, 0.035, 0.07]} radius={0.012} color={C.butter} position={[0, 0.19, 0]} />
+    </group>
+  )
+}
+
 export function Money(props: GroupProps) {
   return (
     <group {...props}>
@@ -203,6 +269,11 @@ const REGISTRY: Record<ProductKind, (p: GroupProps) => React.JSX.Element> = {
   apple: Apple,
   jam: Jam,
   pizza: Pizza,
+  juice: Juice,
+  butter: Butter,
+  iceCream: IceCream,
+  ketchup: Ketchup,
+  pancakes: Pancakes,
 }
 
 /** Height used when stacking a product on top of another one. */
@@ -223,6 +294,11 @@ export const PRODUCT_HEIGHT: Record<ProductKind, number> = {
   apple: 0.27,
   jam: 0.28,
   pizza: 0.11,
+  juice: 0.35,
+  butter: 0.13,
+  iceCream: 0.45,
+  ketchup: 0.35,
+  pancakes: 0.2,
 }
 
 export function Product({ kind, ...props }: GroupProps & { kind: ProductKind }) {

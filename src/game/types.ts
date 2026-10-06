@@ -1,7 +1,7 @@
 // Pure game data types. Nothing here depends on React or three.js,
 // so the whole simulation can run (and be tested) with `bun test`.
 
-export type ItemKind = 'tomato' | 'egg' | 'wheat' | 'tomatoCan' | 'flour' | 'bread' | 'milk' | 'cheese' | 'cake' | 'strawberry' | 'honey' | 'apple' | 'jam' | 'pizza'
+export type ItemKind = 'tomato' | 'egg' | 'wheat' | 'tomatoCan' | 'flour' | 'bread' | 'milk' | 'cheese' | 'cake' | 'strawberry' | 'honey' | 'apple' | 'jam' | 'pizza' | 'juice' | 'butter' | 'iceCream' | 'ketchup' | 'pancakes'
 export type ProductKind = ItemKind | 'can' | 'money'
 export type FlyKind = ItemKind | 'money'
 
@@ -15,7 +15,7 @@ export type HatKind = 'none' | 'cap' | 'beanie' | 'chef' | 'straw' | 'visor' | '
 export type Rect = { x: number; z: number; w: number; d: number }
 
 export type ProducerModel = 'planter' | 'nest' | 'plot' | 'cow' | 'strawberryPatch' | 'beehive' | 'appleTree'
-export type MachineModel = 'canner' | 'mill' | 'oven' | 'cheesePress' | 'mixer' | 'jamPot' | 'pizzaOven'
+export type MachineModel = 'canner' | 'mill' | 'oven' | 'cheesePress' | 'mixer' | 'jamPot' | 'pizzaOven' | 'juicer' | 'butterChurn' | 'iceCreamMachine' | 'ketchupBottler' | 'griddle'
 export type ShelfModel = 'shelf' | 'crate' | 'fridge'
 
 /** Purely decorative props the editor can move around. */

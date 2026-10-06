@@ -28,6 +28,8 @@ export const ICON = {
 
 /** Dark translucent pill with an icon and a counter ("4/8", "MAX"). */
 export function Pill({ icon, text, ...props }: GroupProps & { icon?: ProductKind; text: string }) {
+  // promo capture: counters clutter the footage (bubbles and money pops stay)
+  if (debug.record) return null
   return (
     <group {...props}>
       <SafeHtml center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
@@ -72,6 +74,60 @@ export function PriceTag({ icon, level, label, price, ...props }: GroupProps & {
           <span className="price-cost">
             <ProductIcon kind="money" className="label-product-icon price-money-icon" /> {price}
           </span>
+        </div>
+      </SafeHtml>
+    </group>
+  )
+}
+
+export type OrderLine = { kind: ProductKind; done: number; total: number }
+
+/**
+ * Drive-up order card over a parked car or motorbike: countdown ring, one row per product
+ * (icon + loaded/asked) and the reward. The ring goes green -> yellow -> red and shakes near zero.
+ */
+export function OrderTag({ lines, timeLeft, timeTotal, reward, ...props }: GroupProps & { lines: OrderLine[]; timeLeft: number; timeTotal: number; reward: number }) {
+  const f = Math.max(0, Math.min(1, timeLeft / timeTotal))
+  const color = f > 0.5 ? '#86db55' : f > 0.25 ? '#ffd23f' : '#e8352b'
+  const complete = lines.every((l) => l.done >= l.total)
+  return (
+    <group {...props}>
+      <SafeHtml center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
+        <div className={complete ? 'order done' : f <= 0.25 ? 'order hurry' : 'order'}>
+          <div className="order-timer" style={{ background: `conic-gradient(${color} ${f * 360}deg, #d9dde0 0deg)` }}>
+            <span>{Math.ceil(timeLeft)}</span>
+          </div>
+          <div className="order-lines">
+            {lines.map((l) => (
+              <span key={l.kind} className={l.done >= l.total ? 'order-line ok' : 'order-line'}>
+                <ProductIcon kind={l.kind} className="label-product-icon order-icon" />
+                {l.done}/{l.total}
+              </span>
+            ))}
+          </div>
+          <span className="order-reward">
+            <ProductIcon kind="money" className="label-product-icon order-money" />
+            {reward}
+          </span>
+        </div>
+      </SafeHtml>
+    </group>
+  )
+}
+
+/** Red alarm bubble over a thief: "!" badge, text and the cash he is carrying away. */
+export function AlertTag({ text = '¡LADRÓN!', loot, ...props }: GroupProps & { text?: string; loot?: number }) {
+  return (
+    <group {...props}>
+      <SafeHtml center zIndexRange={[11, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="alert">
+          <span className="alert-bang">!</span>
+          <span>{text}</span>
+          {loot !== undefined && (
+            <span className="alert-loot">
+              <ProductIcon kind="money" className="label-product-icon order-money" />-{loot}
+            </span>
+          )}
         </div>
       </SafeHtml>
     </group>

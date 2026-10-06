@@ -899,3 +899,135 @@ body,
     font-size: 24px;
   }
 }
+
+/* drive-up order card: timer ring | product rows | reward */
+.order {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 16px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  color: var(--ink);
+  font-size: 14px;
+  white-space: nowrap;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.order.hurry {
+  animation: order-shake 0.35s infinite;
+}
+
+.order.done {
+  background: #e4f9d6;
+}
+
+@keyframes order-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-3deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+}
+
+.order-timer {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  display: grid;
+  place-items: center;
+}
+
+.order-timer span {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--ink);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+
+.order-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.order-line {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.order-line.ok {
+  color: #3f9a2a;
+}
+
+.order-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.order-reward {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 6px;
+  border-left: 2px dashed #c9ced2;
+  color: #3f9a2a;
+  font-size: 16px;
+}
+
+.order-money {
+  width: 22px;
+  height: 22px;
+}
+
+/* robbery alert over the thief */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 3px;
+  border-radius: 999px;
+  background: #e8352b;
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+  font-size: 15px;
+  white-space: nowrap;
+  -webkit-text-stroke: 0.6px var(--ink);
+  animation: alert-pulse 0.5s infinite alternate;
+}
+
+.alert-bang {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffd23f;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  -webkit-text-stroke: 0;
+}
+
+.alert-loot {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+@keyframes alert-pulse {
+  to {
+    transform: scale(1.08);
+  }
+}

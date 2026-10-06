@@ -13,14 +13,72 @@ import { MoneyPile, Product, ProductStack } from '../models/Products'
 import { MachineStation } from '../models/Machines'
 import { CarryStack } from '../models/CarryStack'
 import { ShoppingBasket, ShoppingCart } from '../models/ShoppingContainers'
-import { Bubble, ICON, Pill, PriceTag, SafeHtml } from '../models/Labels'
+import { AlertTag, Bubble, ICON, OrderTag, Pill, PriceTag, SafeHtml } from '../models/Labels'
+import { AlarmLight, CatchNet, CaughtThief, EmptyDrawer, MoneySack, Thief } from '../models/Thief'
+import { Car, LaneArrow, Motorbike, ParkingSign, ParkingSpot, ToGoBag, TrafficCone } from '../models/Vehicles'
 
 type Entry = { name: string; node: ReactNode; scale?: number }
 
 const BASKET_ITEMS = (['tomato', 'egg', 'milk', 'bread'] as const).map((kind, id) => ({ id: 100 + id, kind }))
 const CART_ITEMS = (['tomato', 'egg', 'milk', 'bread', 'tomatoCan', 'cheese', 'cake', 'bread'] as const).map((kind, id) => ({ id: 200 + id, kind }))
 
+const CAR_CARGO = (['cake', 'pizza', 'juice'] as const).map((kind, id) => ({ id: 300 + id, kind }))
+
 const ENTRIES: Entry[] = [
+  { name: 'Thief', node: <Thief />, scale: 1.1 },
+  { name: 'Thief running', node: <><Thief running pose={1.2} /><AlertTag loot={240} position={[0, 1.9, 0]} /></>, scale: 1.0 },
+  { name: 'Thief sneaking', node: <Thief sneaking loot={0} />, scale: 1.1 },
+  { name: 'Player with net', node: <Character color={C.player} hold={<CatchNet />} />, scale: 0.8 },
+  { name: 'Player swinging net', node: <Character color={C.player} hold={<CatchNet />} swing walking pace={1.5} />, scale: 0.8 },
+  { name: 'Chase', node: <><Thief running position={[0, 0, 0.9]} /><Character color={C.player} hold={<CatchNet />} walking pace={1.5} position={[0, 0, -0.9]} /></>, scale: 0.7 },
+  { name: 'Caught thief', node: <CaughtThief />, scale: 0.9 },
+  { name: 'Robbed checkout', node: <><Checkout cash={false} /><AlarmLight position={[0.95, 0.8, 0]} /><EmptyDrawer position={[-0.45, 0.8, 0.3]} /></>, scale: 0.9 },
+  { name: 'Net + sack + alarm', node: <><CatchNet position={[-0.6, 0.1, 0]} rotation={[0, 0, 0.5]} /><MoneySack position={[0.3, 0, 0.2]} /><AlarmLight position={[0.9, 0, -0.4]} /></>, scale: 1.1 },
+  { name: 'Car', node: <Car color="#4AA8FF" driver="#F5D64A" hair="#5C3A21" />, scale: 0.9 },
+  { name: 'Car driving', node: <Car color="#E0574F" driver="#5ED36B" driving />, scale: 0.9 },
+  { name: 'Car trunk open', node: <Car color="#F5D64A" driver="#E0574F" waiting trunkOpen cargo={<CarryStack items={CAR_CARGO} />} />, scale: 0.9 },
+  { name: 'Motorbike', node: <Motorbike color="#5ED36B" rider="#F28A3B" />, scale: 1.2 },
+  { name: 'Motorbike box open', node: <Motorbike color="#A77BEA" rider="#F0F0F0" helmet="#F5D64A" waiting boxOpen cargo={<ToGoBag scale={0.8} />} />, scale: 1.2 },
+  { name: 'Parking spot', node: <ParkingSpot />, scale: 0.8 },
+  {
+    name: 'Drive-up order',
+    node: (
+      <group>
+        <ParkingSpot dropSide={1} />
+        <Car color="#E0574F" driver="#F5D64A" waiting trunkOpen position={[0, 0, 0.1]} cargo={<CarryStack items={CAR_CARGO.slice(0, 2)} />} />
+        <OrderTag lines={[{ kind: 'cake', done: 1, total: 1 }, { kind: 'pizza', done: 1, total: 2 }, { kind: 'juice', done: 0, total: 3 }]} timeLeft={22} timeTotal={45} reward={180} position={[0, 2.6, 0]} />
+      </group>
+    ),
+    scale: 0.7,
+  },
+  {
+    name: 'Moto order',
+    node: (
+      <group>
+        <ParkingSpot w={1.6} d={2.4} dropSide={1} />
+        <Motorbike color="#4AA8FF" rider="#5ED36B" waiting boxOpen cargo={<ToGoBag scale={0.8} />} />
+        <OrderTag lines={[{ kind: 'iceCream', done: 1, total: 2 }]} timeLeft={6} timeTotal={25} reward={60} position={[0, 2.2, 0]} />
+      </group>
+    ),
+    scale: 0.9,
+  },
+  {
+    name: 'Parking lot',
+    node: (
+      <group>
+        {[-1, 0, 1].map((i) => (
+          <ParkingSpot key={i} position={[i * 2.45, 0, 0]} dropSide={0} />
+        ))}
+        <Car color="#4AA8FF" driver="#F28A3B" position={[-2.45, 0, 0.1]} />
+        <Motorbike color="#F5D64A" rider="#E0574F" position={[2.45, 0, 0.3]} />
+        <LaneArrow position={[0, 0, 2.7]} rotation={[0, Math.PI / 2, 0]} scale={1.6} />
+        <ParkingSign position={[-4.1, 0, -1.2]} />
+        <TrafficCone position={[3.9, 0, 2.3]} />
+      </group>
+    ),
+    scale: 0.4,
+  },
+  { name: 'Sign + cone + bag', node: <><ParkingSign position={[-0.5, 0, 0]} /><TrafficCone position={[0.5, 0, 0.3]} /><ToGoBag position={[0.3, 0, -0.5]} scale={1.6} /></> },
   // fill order of a 12-slot tomato shelf, like in the game
   ...[0, 3, 6, 9, 12].map((n) => ({ name: `Estante ${n}/12`, node: <Shelf product="tomato" tiers={2} width={1.9} cap={12} count={n} /> })),
   { name: 'Player', node: <Character color={C.player} /> },
@@ -79,6 +137,18 @@ const ENTRIES: Entry[] = [
   { name: 'Mixer', node: <MachineStation model="mixer" inputs={[{ kind: 'flour', count: 2 }, { kind: 'milk', count: 2 }, { kind: 'egg', count: 2 }]} outputKind="cake" output={1} working getProgress={() => 0.5} />, scale: 0.7 },
   { name: 'Jam pot', node: <MachineStation model="jamPot" inputs={[{ kind: 'strawberry', count: 2 }, { kind: 'honey', count: 2 }]} outputKind="jam" output={2} working getProgress={() => 0.5} />, scale: 0.7 },
   { name: 'Pizza oven', node: <MachineStation model="pizzaOven" inputs={[{ kind: 'flour', count: 2 }, { kind: 'tomato', count: 2 }, { kind: 'cheese', count: 2 }]} outputKind="pizza" output={2} working getProgress={() => 0.5} />, scale: 0.7 },
+  { name: 'Juicer', node: <MachineStation model="juicer" inputs={[{ kind: 'apple', count: 4 }]} outputKind="juice" output={2} working getProgress={() => 0.5} />, scale: 0.7 },
+  { name: 'Butter churn', node: <MachineStation model="butterChurn" inputs={[{ kind: 'milk', count: 3 }]} outputKind="butter" output={3} working getProgress={() => 0.5} />, scale: 0.7 },
+  { name: 'Ice cream machine', node: <MachineStation model="iceCreamMachine" inputs={[{ kind: 'milk', count: 2 }, { kind: 'strawberry', count: 3 }]} outputKind="iceCream" output={2} working getProgress={() => 0.5} />, scale: 0.7 },
+  { name: 'Ketchup bottler', node: <MachineStation model="ketchupBottler" inputs={[{ kind: 'tomato', count: 5 }]} outputKind="ketchup" output={3} working getProgress={() => 0.5} />, scale: 0.7 },
+  { name: 'Griddle', node: <MachineStation model="griddle" inputs={[{ kind: 'flour', count: 2 }, { kind: 'egg', count: 2 }, { kind: 'honey', count: 2 }]} outputKind="pancakes" output={2} working getProgress={() => 0.5} />, scale: 0.7 },
+  { name: 'New products', node: (
+    <group>
+      {(['juice', 'butter', 'iceCream', 'ketchup', 'pancakes'] as const).map((k, i) => (
+        <Product key={k} kind={k} position={[(i - 2) * 0.55, 0, 0]} scale={1.5} />
+      ))}
+    </group>
+  ) },
   { name: 'Bakery case', node: <BakeryCase />, scale: 0.9 },
   { name: 'Flower stand', node: <FlowerStand />, scale: 0.9 },
   { name: 'Coffee corner', node: <CoffeeCorner />, scale: 1.2 },

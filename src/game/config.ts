@@ -69,6 +69,11 @@ export const PRICE: Record<ItemKind, number> = Object.fromEntries(
     apple: 4,
     jam: 16,
     pizza: 24,
+    juice: 10,
+    butter: 12,
+    iceCream: 22,
+    ketchup: 10,
+    pancakes: 26,
   }),
 ) as Record<ItemKind, number>
 
@@ -87,6 +92,11 @@ export const ICON: Record<ItemKind, ProductKind> = {
   apple: 'apple',
   jam: 'jam',
   pizza: 'pizza',
+  juice: 'juice',
+  butter: 'butter',
+  iceCream: 'iceCream',
+  ketchup: 'ketchup',
+  pancakes: 'pancakes',
 }
 
 export const NAME: Record<ItemKind, string> = {
@@ -104,6 +114,11 @@ export const NAME: Record<ItemKind, string> = {
   apple: 'manzanas',
   jam: 'mermelada',
   pizza: 'pizzas',
+  juice: 'jugos',
+  butter: 'mantequilla',
+  iceCream: 'helados',
+  ketchup: 'kétchup',
+  pancakes: 'panqueques',
 }
 
 export const ROLE_NAME: Record<'shelver' | 'chef' | 'farmer', string> = {

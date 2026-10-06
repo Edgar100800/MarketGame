@@ -19,6 +19,7 @@ import { SafeHtml } from '../models/Labels'
 import { BuyZone, TrashBin } from '../models/Store'
 import { DecoView } from '../components/DecoView'
 import { PerfProbe } from '../components/PerfProbe'
+import { RecordCamera, RecordDriver } from '../components/Recorder'
 
 const PITCH = (52 * Math.PI) / 180
 const DIST = 24
@@ -310,10 +311,11 @@ export function Level1({ editing = false }: { editing?: boolean }) {
     <>
       {!editing && <GameLoop />}
       {debug.perf && <PerfProbe />}
-      {editing ? <EditorScene /> : debug.shot ? <ShotCamera /> : <CameraRig />}
+      {editing ? <EditorScene /> : debug.record ? <RecordCamera /> : debug.shot ? <ShotCamera /> : <CameraRig />}
+      {debug.record && <RecordDriver />}
       <color attach="background" args={[C.grass]} />
       {/* play view: shadow box follows the camera; editor and ?shot see the whole level */}
-      <Lighting size={editing || debug.shot ? 26 : 18} follow={!editing && !debug.shot} />
+      <Lighting size={editing || debug.shot || debug.record ? 26 : 18} follow={!editing && !debug.shot && !debug.record} />
       <StoreShell editing={editing} />
       {!editing && <Stations />}
       {!editing && <BuyZones />}
@@ -323,8 +325,8 @@ export function Level1({ editing = false }: { editing?: boolean }) {
       {!editing && <FlyingItems />}
       {!editing && <FloatingTexts />}
       {!editing && <UnlockBursts />}
-      {!editing && !debug.shot && <TutorialArrow />}
-      {!editing && !debug.shot && <TargetPointer />}
+      {!editing && !debug.shot && !debug.record && <TutorialArrow />}
+      {!editing && !debug.shot && !debug.record && <TargetPointer />}
     </>
   )
 }
